@@ -8,4 +8,4 @@
 
 Застосування Extract Method, Rename Method та Simplify Conditional Expression у веб-розробці на JavaScript
 
-Повна назва міні-проєкту ЛР українською мовою
+Програмна система для автоматизації роботи бібліотек
