@@ -1,1 +1,198 @@
+Міністерство освіти і науки України 
+Харківський національний університет радіоелектроніки
 
+
+Кафедра програмної інженерії
+
+Звіт
+до практичного завдання № 2
+з дисципліни «Аналіз та рефакторинґ коду»
+на тему: «Застосування Extract Method, Rename Method та Simplify Conditional Expression у веб-розробці на JavaScript»
+
+Виконала:                                                                Перевірив:
+ст. гр. ПЗПІ-23-3						ст. викладач катедри ПІ
+Ходаницька Єлизавета 					Сокорчук Ігор Петрович
+
+
+
+
+
+
+
+Харків - 2025
+1 ІСТОРІЯ ЗМІН
+№
+Дата
+Версія звіту
+Опис змін та виправлень
+1
+28.10.2025
+0.1
+Початок роботи над презентацією і доповіддю
+2
+02.11.2025
+0.2
+Редагування попередньої версії
+
+
+2 ЗАВДАННЯ 
+Застосування Extract Method, Rename Method та Simplify Conditional Expression у веб-розробці на JavaScript.
+
+3 ОПИС ВИКОНАНОЇ РОБОТИ 
+Рефакторинг коду є одним із ключових процесів у сучасній розробці програмного забезпечення, адже він забезпечує підвищення якості, зрозумілості та гнучкості програмного продукту без зміни його зовнішньої поведінки. Грамотно виконаний рефакторинг допомагає зменшити складність проєкту, спрощує процес тестування та подальшої підтримки коду, а також сприяє ефективній співпраці в команді розробників. Застосування перевірених технік рефакторингу дозволяє створювати більш чистий, логічно структурований і передбачуваний код, що відповідає принципам чистої архітектури та об’єктно-орієнтованого програмування.
+Техніка Extract Method полягає у виділенні окремих логічних частин із великих функцій у самостійні, чітко визначені методи. Це особливо важливо у випадках, коли функція виконує кілька різних завдань — наприклад, одночасно обробляє дані, здійснює перевірку та взаємодіє з базою даних. Поділ таких ділянок коду на менші блоки дозволяє дотримуватись принципу єдиної відповідальності, покращує читабельність, спрощує тестування та підвищує можливість повторного використання функцій у різних частинах програми. У результаті код стає більш зрозумілим, логічно впорядкованим та простішим у підтримці.
+Не менш важливим є Rename Method, який зосереджується на правильному іменуванні функцій та змінних. Назви елементів коду є основними носіями інформації для розробника, тому вони повинні бути чіткими, змістовними й відповідати суті виконуваної дії. Використання зрозумілих назв допомагає уникнути плутанини, зменшує когнітивне навантаження та покращує спільну роботу в команді. Коли функція або змінна має точну назву, що описує її призначення, зникає потреба в надмірних коментарях, а структура коду стає самодокументованою. Це також позитивно впливає на процес навігації та пошуку потрібних фрагментів у великих проєктах.
+Техніка Simplify Conditional Expression відіграє ключову роль у спрощенні умовних конструкцій, які часто ускладнюють розуміння логіки програми. Надмірна кількість вкладених умов, повторюваних перевірок або логічних операцій робить код важчим для читання та тестування. Використання цього методу дозволяє винести умови у допоміжні змінні або функції з описовими назвами, що суттєво знижує складність коду. Завдяки цьому логіка стає лінійною, послідовною та передбачуваною, а кількість потенційних помилок під час змінення або розширення програми — значно меншою.
+
+4 ВИСНОВКИ 
+У ході роботи було розглянуто основні принципи рефакторингу коду на прикладі застосування технік Extract Method, Rename Method та Simplify Conditional Expression, які спрямовані на підвищення якості, зрозумілості та підтримуваності програмного забезпечення, а також здобуто практичні навички оптимізації структури коду, покращення його читабельності, коректного іменування функцій та змінних, а також спрощення складних умовних конструкцій для підвищення логічної послідовності програми.
+Дотримання розглянутих принципів рефакторингу дозволяє створювати чистий, структурований і зручний для підтримки код, а також зменшити ймовірність помилок під час розробки та зробити процес командної роботи більш ефективним і продуктивним.
+
+5 ВИКОРИСТАНІ ДЖЕРЕЛА 
+Refactoring JavaScript | WebStorm. WebStorm Help. URL: https://www.jetbrains.com/help/webstorm/specific-javascript-refactorings.html (date of access: 02.11.2025).
+Refactoring JavaScript | WebStorm. WebStorm Help. URL: https://www.jetbrains.com/help/webstorm/specific-javascript-refactorings.html (date of access: 02.11.2025).
+Lingo L. The art of code refactoring in javascript: techniques for improving code quality. Medium. URL: https://medium.com/@london.lingo.01/the-art-of-code-refactoring-in-javascript-techniques-for-improving-code-quality-edbfd119584a (date of access: 02.11.2025).
+Qutab A. The javascript refactoring secrets I wish someone told me sooner. Medium. URL: https://javascript.plainenglish.io/the-javascript-refactoring-secrets-i-wish-someone-told-me-sooner-549802b389a7 (date of access: 02.11.2025).
+
+
+
+
+ДОДАТОК А 
+Відеозапис 
+Відеозапис доповіді: https://youtu.be/1FlkWJJg5MA
+Хронологічний опис відеозапису: 
+0:00 - Вступ
+0:37 - Що таке рефакторинг?
+1:14 - Extract Method
+2:00 - Код До та Після Extract Method
+2:32 - Переваги Extract Method
+3:00 - Rename Method
+3:41 - Код До та Після Rename Method
+4:13 - Переваги Rename  Method
+4:37 - Simplify Conditional Expression Method
+5:22 - Код До та Після Simplify Conditional Expression Method
+5:48 - Переваги Simplify Conditional Expression Method
+6:13 - Висновки
+
+
+
+
+
+
+
+
+
+
+
+
+ДОДАТОК Б 
+Слайди презентації 
+
+Рисунок Б.1 — Титульний слайд
+
+
+Рисунок Б.2 — Коротко про рефакторинг
+
+
+Рисунок Б.3 — Extract Method
+
+
+Рисунок Б.4 — Код “До” та “Після” Extract Method’а
+
+
+Рисунок Б.5 — Переваги Extract Method’а
+
+
+Рисунок Б.6 — Rename Method
+
+
+Рисунок Б.7 — Код “До” та “Після” Rename Method’а
+
+
+Рисунок Б.8 — Переваги Rename Method’а
+
+
+Рисунок Б.9 — Simplify Conditional Expression Method
+
+
+Рисунок Б.10 — Код “До” та “Після” Simplify Conditional Expression Method’а
+
+
+Рисунок Б.11 — Переваги Simplify Conditional Expression Method’а
+
+
+Рисунок Б.12 — Висновки
+
+
+Рисунок Б.13 —Використані джерела
+
+
+Рисунок Б.14 — Дякую за увагу!
+
+
+
+
+ДОДАТОК В 
+Програмний код 
+В.1 Приклад програмного коду до і після Extract Method
+Сайт:https://medium.com/@london.lingo.01/the-art-of-code-refactoring-in-javascript-techniques-for-improving-code-quality-edbfd119584a
+1  function calculateTotalPrice(items) {
+2    let totalPrice = 0;
+3    for (let i = 0; i < items.length; i++) {
+4      totalPrice += items[i].price * items[i].quantity;
+5    }
+6    return totalPrice;
+7  }
+8  
+9  function calculateTotalPrice(items) {
+10   let totalPrice = 0;
+11   for (let i = 0; i < items.length; i++) {
+12     totalPrice += calculateItemTotal(items[i]);
+13   }
+14   return totalPrice;
+15 }
+16 
+17 function calculateItemTotal(item) {
+18   return item.price * item.quantity;
+19 }
+
+В.2 Приклад програмного коду до і після Rename Method
+Сайт:https://medium.com/@london.lingo.01/the-art-of-code-refactoring-in-javascript-techniques-for-improving-code-quality-edbfd119584a
+1  function calcTotPrice(items) {
+2    let totPrice = 0;
+3    for (let i = 0; i < items.length; i++) {
+4      totPrice += calcItemTot(items[i]);
+5    }
+6    return totPrice;
+7  }
+8  
+9  function calcItemTot(item) {
+10   return item.price * item.quantity;
+11 }
+12 
+13 function calculateTotalPrice(items) {
+14   let totalPrice = 0;
+15   for (let i = 0; i < items.length; i++) {
+16     totalPrice += calculateItemTotal(items[i]);
+17   }
+18   return totalPrice;
+19 }
+20 
+21 function calculateItemTotal(item) {
+22   return item.price * item.quantity;
+23 }
+
+
+	В.3 Приклад програмного коду до і після  Simplify Conditional Expression Method
+Сайт:https://medium.com/@london.lingo.01/the-art-of-code-refactoring-in-javascript-techniques-for-improving-code-quality-edbfd119584a
+1  function isEligibleForDiscount(item) {
+2    if (item.price > 100 && item.quantity > 2) {
+3      return true;
+4    } else {
+5      return false;
+6    }
+7  }
+8  
+9  function isEligibleForDiscount(item) {
+10   return item.price > 100 && item.quantity > 2;
+11 }
