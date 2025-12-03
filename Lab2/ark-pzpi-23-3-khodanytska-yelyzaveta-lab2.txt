@@ -1,1 +1,539 @@
+Міністерство освіти і науки України 
+Харківський національний університет радіоелектроніки
 
+
+Кафедра програмної інженерії
+
+Звіт
+з лабораторної роботи № 2
+з дисципліни «Аналіз та рефакторинґ коду»
+на тему: «Програмна система для автоматизації роботи бібліотек»
+
+
+Виконала:                                                                Перевірив:
+ст. гр. ПЗПІ-23-3						ст. викладач катедри ПІ
+Ходаницька Єлизавета 					Сокорчук Ігор Петрович
+
+
+
+
+
+
+
+Харків - 2025
+1 ІСТОРІЯ ЗМІН
+№
+Дата
+Версія звіту
+Опис змін та виправлень
+1
+25.11.2025
+0.1
+Початок роботи над презентацією і доповіддю
+2
+02.12.2025
+0.2
+Редагування попередньої версії
+
+
+2 ЗАВДАННЯ 
+Ознайомитися з процесом розробки серверної частини програмної системи, включаючи проєктування бази даних (БД), розробку API для взаємодії з клієнтами, та перевірку (тестування) їхньої взаємодії. Оволодіти методами проєктування діаграм UML та ER, розробки БД, програмної реалізації API, а також роботи з репозиторіями Git та створення технічної документації.
+
+3 ОПИС ВИКОНАНОЇ РОБОТИ
+	3.1 Архітектурні рішення
+Архітектура серверної частини системи базується на фреймворку Flask, що працює як REST-орієнтована серверна платформа. Уся логіка буде розділена на окремі функціональні шари: 
+Контролери, що обробляють HTTP-запити клієнтів та передають їх далі; 
+Сервісний рівень, у якому зосереджена бізнес-логіка системи, включно з операціями видачі та повернення книг, бронювання, обробки прострочених замовлень і формування звітів; 
+Рівень доступу до даних, який взаємодіє з базою даних SQLite через ORM. 
+Сервер також міститить модуль для автентифікації та авторизації користувачів із підтримкою ролей (читач, бібліотекар, адміністратор), що забезпечує доступ до відповідних функцій системи. Для підвищення надійності передбачається ведення логів, які фіксуватимуть інформацію про основні події та помилки, а також окремий модуль аналітики, що дозволятиме бібліотеці отримувати дані про популярність книг та активність читачів.
+Клієнтська частина системи реалізується у вигляді веб-інтерфейсу, створеного з використанням HTML, CSS та JavaScript. Інтерфейс буде адаптований під різні ролі користувачів: 
+Читачі зможуть переглядати каталог, бронювати книги, продовжувати строки користування та слідкувати за своєю історією; 
+Бібліотекарі ж оформляти видачу та повернення, редагувати каталог і працювати з читачами; 
+Адміністратор зможе керувати користувачами, даними та параметрами роботи бібліотеки. 
+Комунікація клієнта із сервером виконуватиметься через REST API у форматі JSON, що забезпечить незалежність інтерфейсу від бекенду та простоту розширення функціоналу в майбутньому.
+	3.2 Моделі та зв’язки між ними
+	У системі використовується низка основних моделей, які забезпечують роботу бібліотеки та взаємодію між користувачами, книгами і процесами видачі. 
+Центральною моделлю є користувач, що представляє усіх учасників системи, включно з читачами, бібліотекарями та адміністраторами. Замість створення окремих таблиць для кожної ролі було вирішено використовувати одну-єдину сутність із полем role, яке визначить подальші права доступу. 
+Модель користувача містить базову інформацію, таку як ім’я, електронна адреса, а також дані для автентифікації. Завдяки цьому вся система управління доступом реалізується централізовано й ефективно.
+Другим ключовим елементом є модель книги, яка зберігає дані про кожну одиницю фонду. Книга має такі характеристики, як назва, автор, категорія, стан, isbn, місцезнаходження, поточний статус (доступна, видана, заброньована або списана), теґи. Ця модель дозволяє відстежувати як фізичні екземпляри, так і їхній стан, що є важливим для точного обліку бібліотечних ресурсів.
+Для забезпечення можливості користувача зарезервувати книгу використовується модель бронювання. Вона пов’язує читача з певною книгою, фіксує час створення бронювання, строк його дії та статус. Ця модель дозволяє організувати черги на книги та гарантувати, що читач зможе отримати потрібний екземпляр у визначений час.
+Процес фактичної видачі та повернення реалізується через модель видачі, яка відображає динамічні операції з фондами. У ній зберігається інформація про те, кому, коли і яка книга була видана, строк її повернення, а також дата фактичного повернення. Модель також дозволяє визначати прострочені екземпляри та автоматично змінювати статуси книг у каталозі. 
+Оскільки одна книга може бути видана багато разів, а один користувач може мати кілька активних позик, між моделями “Книга”, “Користувач”, “Бронювання” та “Видача” існують зв’язки типу “один до багатьох”.
+	3.3 Основні прецеденти використання серверної частини
+	Бібліотекар — це ключова роль у системі, яка забезпечує повсякденну роботу бібліотеки. Він має доступ до системи через окремий обліковий запис із підвищеними правами, що дозволяє йому виконувати операції, пов’язані з управлінням фондами та взаємодією з читачами. Він може додавати нові книги до каталогу, редагувати або видаляти існуючі записи, що дозволяє підтримувати актуальність фонду. 
+Основна функція бібліотекаря — швидке оформлення видачі та повернення книг, що значно прискорює процес обслуговування читачів, але крім того, він має можливість переглядати список усіх читачів та їхніх замовлень, що допомагає контролювати активність користувачів і виявляти прострочення. 
+
+Рисунок 3.2 — UML-діаграма для бібліотекаря
+
+Читач — це основний користувач системи, який отримує доступ до послуг бібліотеки онлайн. Він може зареєструватися в системі за допомогою електронної пошти або через Google, після чого авторизуватися та отримати доступ до особистого кабінету. 
+Його головна функція — це пошук книг у електронному каталозі за назвою, автором або теґами з можливістю перегляду деталей книги, таких як наявність, місцезнаходження та стан. Читач може забронювати доступну книгу, щоб гарантувати її отримання після повернення попередньою особою. Також він може продовжувати строк користування книгою онлайн, що усуває необхідність фізичного відвідування бібліотеки для продовження терміну. У своєму кабінеті читач може переглядати історію всіх своїх замовлень, у тому ж числі поточні та минулі видачі, що дозволяє легко відстежувати читацький досвід.
+
+Рисунок 3.1 — UML-діаграма для читача
+
+Адміністратор — це роль, призначена для управління системою. Він має повний контроль над усіма даними системи, зокрема над користувачами, книгами та налаштуваннями. Також він може керувати обліковими записами, наприклад, створювати нових бібліотекарів, блокувати або змінювати ролі користувачів, що забезпечує безпеку та контроль доступу. Адміністратор відповідає за формування аналітичних звітів, які допомагають оцінити ефективність роботи бібліотеки, наприклад, визначити найпопулярніші книги, виявити читачів із простроченими поверненнями або проаналізувати загальну активність користувачів.
+
+Рисунок 3.3 — UML-діаграма для адміністратора
+	3.4 Сутності, атрибути та зв’язки між ними у базі даних
+	База даних програмної системи для автоматизації роботи бібліотек складається з чотирьох основних таблиць, а саме: “Користувач”, “Книга”, “Видача” та “Бронювання”.
+Таблиця “Користувач” містить інформацію про читачів: ідентифікатор, ім’я, email, пароль, телефон, роль. Це основна таблиця для всіх моделей користувача, а саме читача, бібліотекаря й адміністратора
+Таблиця “Книга” зберігає дані про книги: ідентифікатор, назву, автора, категорію, стан книги, isbn та адресу, на якій можна знайти бібліотеку й узяти там книгу.
+Таблиця “Видача” фіксує, яка книга видана якому користувачеві, коли її взяли, коли потрібно повернути і коли фактично повернули. Вона пов’язує користувачів і книги під час активної видачі.
+А таблиця “Бронювання” ж зберігає інформацію про зарезервовані книги: хто і коли забронював, до якого терміну діє бронь, статус і повідомлення користувачу про успішну бронь. 
+
+Рисунок 3.4 — ER-діаграма
+	
+Зв’язки між таблицями побудовані наступним чином — один користувач може мати багато видач і бронювань, одна книга може бути видана або заброньована лише одному користувачеві в певний момент. Така структура дозволяє чітко відстежувати рух кожної книги та дії кожного читача.
+	3.5 Таблиці бази даних
+	На початковому етапі проєктування бази даних була сформована узагальнена таблиця “Бібліотека”, яка містить атрибути, пов’язані одночасно з користувачами, книгами, видачами та бронюваннями. У цій таблиці присутні різні ідентифікатори (user_id, loan_id, reservation_id, book_id), а також атрибути, що описують особисті дані користувача, інформацію про книгу, дані про видачу та терміни бронювання. 
+Така структура відповідає вимогам першої нормальної форми (1НФ), оскільки всі значення атомарні. Однак оскільки таблиця не мала явного складеного первинного ключа, вона автоматично відповідала і вимогам другої нормальної форми (2НФ), де основним критерієм є відсутність часткових залежностей атрибутів від частини складеного ключа.
+
+Рисунок 3.5 — 1НФ бази даних
+
+Наступним етапом стало приведення до третьої нормальної форми (3НФ), що вимагає усунення транзитивних залежностей. Було проаналізовано, що велика кількість атрибутів залежала не напряму від ідентифікаторів у таблиці, а один від одного (наприклад, дані книги залежать від book_id, а не від user_id), що й створювало надмірне дублювання. 
+Для усунення цих залежностей дані були логічно розділені за сутностями. Унаслідок цього були створені окремі, нормалізовані таблиці — “Користувач”, “Книга”, “Видача” та “Бронювання”. Кожна з них отримала свій простий первинний ключ (user_id, book_id, loan_id, reservation_id), а всі її атрибути стали залежати виключно від цього ключа.
+Між новими таблицями були встановлені зв'язки за допомогою зовнішніх ключів для відтворення логіки предметної області. Наприклад, таблиці «Видача» та «Бронювання» посилаються на користувача (user_id) та книгу (book_id). 
+
+Рисунок 3.6 — 3НФ для бази даних
+3.6 Специфікація розробленого API
+API системи побудоване на Flask і взаємодіє з клієнтом через HTTP-запити, використовуючи стандартний формат обміну даними JSON. Уся інформація передається в кодуванні UTF-8, що дозволяє без проблем працювати з різними мовами, у тому ж числі й із українською. А використання REST дозволяє дотримуватися загальноприйнятих веб-стандартів і спрощує структуру запитів та відповідей. Такий підхід робить систему більш гнучкою, зрозумілою й легкою для подальшого розширення та інтеграції.
+API підтримує базові HTTP-методи:
+POST — для створення нових сутностей (користувачів, книг, видач, бронювань) та для виконання операцій, таких як повернення книги;
+GET — для отримання інформації або пошуку.
+Основна логіка зосереджена на виконанні ключових CRUD-дій, необхідних для роботи бібліотечної системи, зокрема створення користувача, додавання книги, оформлення видачі, повернення і пошук доступних екземплярів.
+	У системі реалізовано кілька ключових маршрутів, які забезпечують роботу з користувачами, книжками та процесами видачі. Кожен ендпоінт відповідає за окрему дію та повертає JSON-дані разом зі стандартними HTTP-кодами.
+1. Створення користувача — /users/ (POST)
+Цей маршрут дозволяє зареєструвати нового користувача. Клієнт надсилає JSON з основною інформацією — ім’ям, email та роллю.
+Приклад запиту:
+{
+  "name": "Єва",
+  "email": "eva@example.com",
+  "password": "123",
+  "role": "reader"
+}
+Приклад відповіді:
+{
+  "user_id": 1,
+  "name": "Єва",
+  "email": "eva@example.com",
+  "role": "reader"
+}
+У випадку помилки сервер поверне код 400 та повідомлення з текстом помилки.
+2. Отримання користувача за ID — /users/<id> (GET)
+Цей ендпоінт повертає інформацію про конкретного користувача.
+Приклад успішної відповіді:
+{
+  "user_id": 1,
+  "name": "Єва",
+  "email": "eva@example.com",
+  "role": "reader"
+}
+Якщо користувача з таким ID не існує, сервер повертає: {"error": "Not found"} з кодом 404.
+3. Додавання книги — /books/ (POST)
+Ендпоінт дозволяє додати нову книгу до каталогу.
+Приклад запиту:
+{
+  "title": "1984",
+  "author": "Джордж Орвелл",
+  "isbn": "1234567890",
+  "category": "Антиутопія",
+  "location": "вул. Ярослава Мудрого, 17А"
+}
+
+Приклад відповіді:
+{
+  "book_id": 1,
+  "title": "1984",
+  "author": "Джордж Орвелл",
+  "status": "available"
+}
+4. Пошук книг — /books/search (GET)
+Для пошуку достатньо передати параметр q, який може містити частину назви або автора.
+Приклад запиту:
+/books/search?q=Орвелл
+Приклад відповіді:
+[
+  {
+    "book_id": 1,
+    "title": "1984",
+    "author": "Джордж Орвелл",
+    "status": "available"
+  }
+]
+Якщо нічого не знайдено, повертається порожній список.
+5. Оформлення видачі книги — /loans/ (POST)
+Цей маршрут створює запис про видачу книги читачеві.
+Приклад запиту:
+{
+  "user_id": 1,
+  "book_id": 1
+}
+
+Приклад відповіді:
+{
+  "loan_id": 1,
+  "book_id": 1,
+  "due_date": "2025-12-16T13:00:00"
+}
+Якщо книга вже видана або сталася інша помилка, API поверне код 400.
+6. Повернення книги — /loans/<id>/return (POST)
+Ендпоінт завершує видачу, змінює статус книги на “available” і фіксує час повернення.
+Приклад відповіді:
+{
+  "message": "Книга успішно повернута",
+  "return_date": "2025-12-02T13:10:00"
+}
+У разі помилки повертається {"error": "some message"} з кодом відповіді 400.
+
+4 ВИСНОВКИ
+	Під час виконання лабораторної роботи було спроєктовано серверну частину програмної системи автоматизації роботи бібліотек на основі Flask з реалізацією REST API. За допомогою UML-діаграм варіантів використання визначено функціональність для трьох ролей: читача, бібліотекаря та адміністратора.
+	Також було спроєктовано реляційну базу даних, яка після нормалізації до третьої нормальної форми (3НФ) складається з чотирьох таблиць: “Користувач”, “Книга”, “Видача” та “Бронювання”. ER-діаграма наочно відображає зв’язки “один до багатьох” та забезпечує цілісність даних.
+	Для взаємодії клієнтської та серверної частин розроблено REST API, що підтримує основні операції — створення користувачів і книг, оформлення видачі та бронювання, пошук фондів та повернення книг. Усі ендпоінти приймають і повертають дані у форматі JSON, що забезпечує простоту інтеграції з веб-інтерфейсом у майбутньому.
+
+5 ВИКОРИСТАНІ ДЖЕРЕЛА 
+Нормалізація баз даних. - greenhouse. Greenhouse - Мій затишний зелений будинок. URL: https://greenhouse.cv.ua/?p=697 (дата звернення: 02.12.2025).
+Chris K. Database normalization – normal forms 1nf 2nf 3nf table examples. freeCodeCamp.org. URL: https://www.freecodecamp.org/news/database-normalization-1nf-2nf-3nf-table-examples/ (date of access: 02.12.2025).
+Design patterns in python. Refactoring and Design Patterns. URL: https://refactoring.guru/design-patterns/python (date of access: 02.12.2025).
+How to use an API in python – dataquest. Dataquest. URL: https://www.dataquest.io/blog/api-in-python/?utm_source=google&amp;utm_medium=&amp;matchtype=&amp;device=c&amp;utm_campaign=remarketing&amp;campaignid=22944558136&amp;adgroupid=&amp;adid=&amp;utm_content=&amp;gad_source=1&amp;gad_campaignid=22934590983&amp;gbraid=0AAAAADgix8N43cBgqQ95qXPBWg5tocavE&amp;gclid=CjwKCAiAlrXJBhBAEiwA-5pgwjlLX41b2_FudZEXi3jEb6RZer4BlJ6UU0JcJUy0Ee93aEZWt4Lp7hoCKBUQAvD_BwE (date of access: 02.12.2025).
+SQLAlchemy unified tutorial – sqlalchemy 2.0 documentation. SQLAlchemy Documentation – SQLAlchemy 2.0 Documentation. URL: https://docs.sqlalchemy.org/en/20/tutorial/index.html (date of access: 02.12.2025).
+
+
+
+
+
+
+
+
+
+ДОДАТОК А 
+Відеозапис 
+Відеозапис доповіді: https://youtu.be/NbYfUpdbdMY
+Хронологічний опис відеозапису:
+0:00 - Вступ 
+0:38 - Архітектурні рішення
+2:08 - Моделі та зв’язки між ними
+4:01 - Основні прецеденти використання серверної частини
+5:41 - Сутності, атрибути та зв’язки між ними у базі даних
+7:02 - Таблиці бази даних
+9:12 - Специфікація розробленого API
+12:07 - Висновки
+13:11 - Демонстрація тестування
+
+ДОДАТОК Б
+Програмний код 
+В.1 Програмний код для реалізації CRUD-операцій
+ 1  from sqlalchemy.orm import Session
+ 2  from models import User, Book, Loan, Reservation
+ 3  import hashlib
+ 4  from datetime import datetime
+ 5  
+ 6  def hash_password(pw: str) -> str:
+ 7      return hashlib.sha256(pw.encode()).hexdigest()
+ 8  
+ 9  def create_user(db: Session, name: str, email: str, password: str, phone: str = None, role: str = "reader"):
+10      db_user = User(
+11          name=name,
+12          email=email,
+13          password_hash=hash_password(password),
+14          phone=phone,
+15          role=role
+16      )
+17      db.add(db_user)
+18      db.commit()
+19      db.refresh(db_user)
+20      return db_user
+21  
+22  def get_user(db: Session, user_id: int):
+23      return db.query(User).filter(User.user_id == user_id).first()
+24  
+25  def get_user_by_email(db: Session, email: str):
+26      return db.query(User).filter(User.email == email).first()
+27  
+28  def get_users(db: Session, role: str = None):
+29      q = db.query(User)
+30      if role:
+31          q = q.filter(User.role == role)
+32      return q.all()
+33  
+34  def update_user(db: Session, user_id: int, **kwargs):
+35      user = db.query(User).filter(User.user_id == user_id).first()
+36      if not user:
+37          return None
+38      if "password" in kwargs:
+39          kwargs["password_hash"] = hash_password(kwargs.pop("password"))
+40      for k, v in kwargs.items():
+41          setattr(user, k, v)
+42      db.commit()
+43      db.refresh(user)
+44      return user
+45  
+46  def delete_user(db: Session, user_id: int) -> bool:
+47      user = db.query(User).filter(User.user_id == user_id).first()
+48      if user:
+49          db.delete(user)
+50      db.commit()
+51      return True if user else False
+52  
+53  def create_book(db: Session, title: str, author: str, **kwargs):
+54      book = Book(title=title, author=author, **kwargs)
+55      db.add(book)
+56      db.commit()
+57      db.refresh(book)
+58      return book
+59  
+60  def get_book(db: Session, book_id: int):
+61      return db.query(Book).filter(Book.book_id == book_id).first()
+62  
+63  def search_books(db: Session, q: str):
+64      pattern = f"%{q}%"
+65      return db.query(Book).filter(
+66          Book.title.like(pattern) |
+67          Book.author.like(pattern) |
+68          Book.tags.like(pattern)
+69      ).all()
+70  
+71  def update_book(db: Session, book_id: int, **kwargs):
+72      book = db.query(Book).filter(Book.book_id == book_id).first()
+73      if book:
+74          for k, v in kwargs.items():
+75              setattr(book, k, v)
+76      db.commit()
+77      db.refresh(book)
+78      return book
+79  
+80  def delete_book(db: Session, book_id: int) -> bool:
+81      book = db.query(Book).filter(Book.book_id == book_id).first()
+82      if book:
+83          db.delete(book)
+84      db.commit()
+85      return True if book else False
+86  
+87  def create_loan(db: Session, user_id: int, book_id: int, days: int = 14):
+88      from models import BookStatus
+89      book = db.query(Book).filter(Book.book_id == book_id).first()
+90      if not book or book.status != BookStatus.AVAILABLE:
+91          raise ValueError("Книга недоступна")
+92      from datetime import timedelta
+93      loan = Loan(
+94          user_id=user_id,
+95          book_id=book_id,
+96          due_date=datetime.utcnow() + timedelta(days=days)
+97      )
+98      book.status = BookStatus.ISSUED
+99      db.add(loan)
+100     db.commit()
+101     db.refresh(loan)
+102     return loan
+103 
+104 def return_book(db: Session, loan_id: int):
+105     from models import BookStatus
+106     loan = db.query(Loan).filter(Loan.loan_id == loan_id).first()
+107     if not loan or loan.return_date:
+108         raise ValueError("Книга вже повернута")
+109     loan.return_date = datetime.utcnow()
+110     book = db.query(Book).filter(Book.book_id == loan.book_id).first()
+111     book.status = BookStatus.AVAILABLE
+112     db.commit()
+113     db.refresh(loan)
+114     return loan
+115 
+116 def create_reservation(db: Session, user_id: int, book_id: int, days: int = 7):
+117     from models import BookStatus, ReservationStatus
+118     book = db.query(Book).filter(Book.book_id == book_id).first()
+119     if not book:
+120         raise ValueError("Книга не знайдена")
+121     from datetime import timedelta
+122     res = Reservation(
+123         user_id=user_id,
+124         book_id=book_id,
+125         expiry_date=datetime.utcnow() + timedelta(days=days)
+126     )
+127     if book.status == BookStatus.AVAILABLE:
+128         book.status = BookStatus.RESERVED
+129     db.add(res)
+130     db.commit()
+131     db.refresh(res)
+132     return res
+
+В.2 Програмний код для реалізації бази даних
+ 1  from sqlalchemy import create_engine
+ 2  from sqlalchemy.ext.declarative import declarative_base
+ 3  from sqlalchemy.orm import sessionmaker
+ 4  
+ 5  DATABASE_URL = "sqlite:///library.db"
+ 6  engine = create_engine(DATABASE_URL, echo=False)
+ 7  SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+ 8  Base = declarative_base()
+
+В.3 Програмний код для реалізації моделей
+ 1  from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Enum as SQLEnum
+ 2  from sqlalchemy.orm import relationship
+ 3  from datetime import datetime
+ 4  from database import Base
+ 5  from enum import Enum
+ 6  
+ 7  class UserRole(str, Enum):
+ 8      READER = "reader"
+ 9      LIBRARIAN = "librarian"
+10      ADMIN = "admin"
+11  
+12  class BookStatus(str, Enum):
+13      AVAILABLE = "available"
+14      ISSUED = "issued"
+15      RESERVED = "reserved"
+16      WITHDRAWN = "withdrawn"
+17  
+18  class BookCondition(str, Enum):
+19      NEW = "new"
+20      GOOD = "good"
+21      FAIR = "fair"
+22      POOR = "poor"
+23  
+24  class ReservationStatus(str, Enum):
+25      ACTIVE = "active"
+26      COMPLETED = "completed"
+27      CANCELLED = "cancelled"
+28      EXPIRED = "expired"
+29  
+30  class User(Base):
+31      __tablename__ = "users"
+32      user_id = Column(Integer, primary_key=True, index=True)
+33      name = Column(String(100), nullable=False)
+34      email = Column(String(100), unique=True, index=True, nullable=False)
+35      password_hash = Column(String(256), nullable=False)
+36      phone = Column(String(20))
+37      role = Column(SQLEnum(UserRole), default=UserRole.READER, nullable=False)
+38      loans = relationship("Loan", back_populates="user", cascade="all, delete-orphan")
+39      reservations = relationship("Reservation", back_populates="user", cascade="all, delete-orphan")
+40  
+41  class Book(Base):
+42      __tablename__ = "books"
+43      book_id = Column(Integer, primary_key=True, index=True)
+44      title = Column(String(200), nullable=False)
+45      author = Column(String(100), nullable=False)
+46      category = Column(String(50))
+47      isbn = Column(String(20), unique=True)
+48      condition = Column(SQLEnum(BookCondition), default=BookCondition.GOOD)
+49      status = Column(SQLEnum(BookStatus), default=BookStatus.AVAILABLE, nullable=False)
+50      location = Column(String(100))
+51      tags = Column(String(200))
+52      loans = relationship("Loan", back_populates="book", cascade="all, delete-orphan")
+53      reservations = relationship("Reservation", back_populates="book", cascade="all, delete-orphan")
+54  
+55  class Loan(Base):
+56      __tablename__ = "loans"
+57      loan_id = Column(Integer, primary_key=True, index=True)
+58      user_id = Column(Integer, ForeignKey("users.user_id"), nullable=False)
+59      book_id = Column(Integer, ForeignKey("books.book_id"), nullable=False)
+60      issue_date = Column(DateTime, default=datetime.utcnow, nullable=False)
+61      due_date = Column(DateTime, nullable=False)
+62      return_date = Column(DateTime)
+63      user = relationship("User", back_populates="loans")
+64      book = relationship("Book", back_populates="loans")
+65  
+66  class Reservation(Base):
+67      __tablename__ = "reservations"
+68      reservation_id = Column(Integer, primary_key=True, index=True)
+69      user_id = Column(Integer, ForeignKey("users.user_id"), nullable=False)
+70      book_id = Column(Integer, ForeignKey("books.book_id"), nullable=False)
+71      reservation_date = Column(DateTime, default=datetime.utcnow, nullable=False)
+72      expiry_date = Column(DateTime, nullable=False)
+73      status = Column(SQLEnum(ReservationStatus), default=ReservationStatus.ACTIVE, nullable=False)
+74      user = relationship("User", back_populates="reservations")
+75      book = relationship("Book", back_populates="reservations")
+
+В.4 Програмний код для реалізації головної програми
+ 1  from flask import Flask, request, jsonify
+ 2  from database import engine, SessionLocal
+ 3  from models import Base
+ 4  from crud import *
+ 5  
+ 6  app = Flask(__name__)
+ 7  Base.metadata.create_all(bind=engine)
+ 8  
+ 9  def get_db():
+10      db = SessionLocal()
+11      try:
+12          yield db
+13      finally:
+14          db.close()
+15  
+16  @app.route("/users/", methods=["POST"])
+17  def create_user_route():
+18      db = next(get_db())
+19      data = request.get_json()
+20      try:
+21          user = create_user(db, **data)
+22          return jsonify({
+23              "user_id": user.user_id,
+24              "name": user.name,
+25              "email": user.email,
+26              "role": user.role
+27          }), 201
+28      except Exception as e:
+29          return jsonify({"error": str(e)}), 400
+30  
+31  @app.route("/users/<int:user_id>", methods=["GET"])
+32  def get_user_route(user_id):
+33      db = next(get_db())
+34      user = get_user(db, user_id)
+35      if not user:
+36          return jsonify({"error": "Not found"}), 404
+37      return jsonify({
+38          "user_id": user.user_id,
+39          "name": user.name,
+40          "email": user.email,
+41          "role": user.role
+42      })
+43  
+44  @app.route("/books/", methods=["POST"])
+45  def create_book_route():
+46      db = next(get_db())
+47      data = request.get_json()
+48      book = create_book(db, **data)
+49      return jsonify({
+50          "book_id": book.book_id,
+51          "title": book.title,
+52          "author": book.author,
+53          "status": book.status
+54      }), 201
+55  
+56  @app.route("/books/search")
+57  def search_books_route():
+58      db = next(get_db())
+59      q = request.args.get("q", "")
+60      books = search_books(db, q)
+61      return jsonify([{
+62          "book_id": b.book_id,
+63          "title": b.title,
+64          "author": b.author,
+65          "status": b.status
+66      } for b in books])
+67  
+68  @app.route("/loans/", methods=["POST"])
+69  def create_loan_route():
+70      db = next(get_db())
+71      data = request.get_json()
+72      try:
+73          loan = create_loan(db, data["user_id"], data["book_id"])
+74          return jsonify({
+75              "loan_id": loan.loan_id,
+76              "book_id": loan.book_id,
+77              "due_date": loan.due_date.isoformat()
+78          }), 201
+79      except Exception as e:
+80          return jsonify({"error": str(e)}), 400
+81  
+82  @app.route("/loans/<int:loan_id>/return", methods=["POST"])
+83  def return_loan_route(loan_id):
+84      db = next(get_db())
+85      try:
+86          loan = return_book(db, loan_id)
+87          return jsonify({
+88              "message": "Книга була успішно повернута.",
+89              "return_date": loan.return_date.isoformat()
+90          })
+91      except Exception as e:
+92          return jsonify({"error": str(e)}), 400
+93  
+94  if __name__ == "__main__":
+95      app.run(debug=True)
