@@ -1,1 +1,1021 @@
+Міністерство освіти і науки України 
+Харківський національний університет радіоелектроніки
+
+
+Кафедра програмної інженерії
+
+Звіт
+з лабораторної роботи № 3
+з дисципліни «Аналіз та рефакторинґ коду»
+на тему: «Програмна система для автоматизації роботи бібліотек»
+
+
+Виконала:                                                                Перевірив:
+ст. гр. ПЗПІ-23-3						ст. викладач катедри ПІ
+Ходаницька Єлизавета 					Сокорчук Ігор Петрович
+
+
+
+
+
+
+
+Харків - 2025
+1 ІСТОРІЯ ЗМІН
+№
+Дата
+Версія звіту
+Опис змін та виправлень
+1
+01.11.2025
+0.1
+Початок роботи над презентацією і доповіддю
+2
+04.12.2025
+0.2
+Редагування попередньої версії
+
+
+2 ЗАВДАННЯ 
+Ознайомитися з процесом розробки бізнес логіки та функцій адміністрування серверної частини програмної системи. Отримати практичні навички реалізації бізнес логіки, функцій адміністрування, створення UML-діаграм діяльності та взаємодії, а також перевірки (тестування) роботи серверної частини.
+
+3 ОПИС ВИКОНАНОЇ РОБОТИ
+	3.1 Архітектурні рішення
+	Архітектура серверної частини системи базується на фреймворку Flask, який використовується як REST-орієнтована серверна платформа. Вся логіка системи розділена на три чітко визначені функціональні шари:
+Контролери, які обробляють HTTP-запити від клієнтів, валідують вхідні дані та передають їх до сервісного рівня;
+Сервісний рівень, де зосереджена бізнес-логіка, а саме обробка операцій видачі та повернення книг, бронювання, виявлення прострочених замовлень, формування аналітичних звітів тощо;
+Рівень доступу до даних, що реалізований за допомогою SQLAlchemy ORM і на поточному етапі взаємодіє з SQLite — легкою вбудованою системою управління базами даних, придатною для розробки та демонстрації. У подальшому планується міграція на більш потужну СУБД як PostgreSQL, без зміни архітектури завдяки абстракції ORM.
+Сервер також передбачає модуль автентифікації та авторизації з підтримкою ролей — читач, бібліотекар та адміністратор, — що забезпечує контрольований доступ до відповідних функцій системи. Для підвищення надійності передбачається ведення логів, які фіксуватимуть інформацію про основні події та помилки, а також реалізовано аналітичний модуль, який дозволяє збирати статистику щодо популярності книг, активності читачів та ефективності роботи бібліотеки.
+Клієнтська частина системи реалізується у вигляді адаптивного веб-інтерфейсу, створеного з використанням HTML, CSS та JavaScript. Інтерфейс є роль-орієнтованим, тобто:
+Читачі можуть переглядати електронний каталог, бронювати книги, продовжувати строк користування та переглядати історію своїх замовлень;
+Бібліотекарі ж оформлювати видачу та повернення книг, управляти каталогом та працювати з профілями читачів;
+Адміністратори можуть керувати всіма користувачами, налаштовувати системні параметри, отримувати аналітичні звіти та забезпечувати загальну адміністративну підтримку системи.
+Комунікація між клієнтською та серверною частиною здійснюється через REST API у форматі JSON, що забезпечує незалежність інтерфейсу від бекенду, спрощення тестування, інтеграції та подальшого розширення функціональності, зокрема для IOT-пристрою.
+	3.2 Бізнес-логіка серверної частини програмної системи
+У рамках розробки серверної частини програмної системи для автоматизації роботи бібліотеки було реалізовано бізнес-логіку, яка забезпечує коректну обробку клієнтських запитів та виконання основних операцій згідно з правилами функціонування бібліотеки. Ця логіка виступає як центральний механізм, що зв’язує користувачів, дані та бізнес-процеси, гарантуючи цілісність й узгодженість стану системи.
+Система підтримує повний цикл роботи з користувачами — від реєстрації та перевірки існування облікового запису до безпечного зберігання паролів шляхом їх хешування (див. рис. Б1).
+На рисунку наведено UML-діаграму діяльності, що демонструє основний сценарій взаємодії між читачем, бібліотекарем та системою. Цей процес є центральним для функціонування бібліотеки, оскільки він охоплює три ключові етапи, а саме — бронювання, видачу та повернення книги. 
+Читач шукає книгу в каталозі. Якщо книга доступна, він може забронювати її, і система автоматично змінює її статус на «заброньована». Якщо книга недоступна, система повідомляє про це. Далі бібліотекар бачить активне бронювання, оформляє видачу, і система фіксує запис у таблиці Loan, змінюючи статус книги на “видана” та встановлюючи строк повернення. Після закінчення строку читач має можливість повернути книгу. Якщо він зробить це вчасно, система просто оновить статус на “доступна”. Якщо строк прострочено, система виявляє це, а бібліотекар приймає повернення, і статус знову змінюється на “доступна”.
+Також реалізовано гнучкий пошук книг за назвою, автором або теґами, що значно спрощує навігацію в каталозі (див. рис. Б.2). 
+На діаграмі показано послідовність взаємодій між читачем, API, серверною бізнес-логікою та базою даних під час виконання типових операцій користувача. Зокрема діаграма демонструє, як користувач надсилає запит на пошук книги, а сервер виконує звернення до бази даних і повертає результати у вигляді JSON-відповіді. Далі відображено процес створення резервування. Серверна частина перевіряє наявність книги, створює запис у таблиці резервувань, змінює статус книги та надсилає підтвердження успішного створення бронювання. Завершальним етапом наведено запит на отримання списку видач користувачу, під час якого бізнес-логіка виконує вибірку відповідних записів із бази даних та повертає їх клієнту. 
+Операції додавання, редагування та видалення книг дозволяють бібліотекарям ефективно керувати фондами та підтримувати актуальність інформації (див. рис. Б.3). 
+На діаграмі показано основний цикл взаємодії бібліотекаря з системою. Зокрема ілюструється, як бібліотекар створює новий запис про книгу. Серверна частина отримує дані, формує відповідний об’єкт і зберігає його в базі даних, після чого повертає підтвердження успішного створення. Далі демонструється процес видачі книги користувачу, який включає перевірку доступності, формування позики та зміну статусу книги на “видана”. Завершальною операцією є повернення книги, під час якого система знаходить відповідний запис про позику, встановлює дату повернення та знову змінює статус книги на “доступна”.
+Особливу увагу приділено логіці резервування та видачі книг. При бронюванні система автоматично перевіряє наявність книги, створює запис про резерв і встановлює термін його дії, одночасно змінюючи статус книги на “зарезервована”. Видача можлива лише для книг у стані “доступна”. У цьому випадку створюється запис про позику, а також визначається дата повернення. Повернення книги супроводжується перевіркою коректності операції, після чого статус книги автоматично повертається до “доступна”.
+Завдяки чіткій системі статусів кожна книга завжди перебуває в одному визначеному стані, що виключає суперечності та забезпечує надійність даних. Разом усі ці механізми формують цілісну, логічну та зручну для користування систему, яка повністю відображає реальні процеси роботи бібліотеки.
+
+3.3 Функції адміністрування серверної частини програмної системи
+Адміністратор у системі автоматизації роботи бібліотеки виконує роль ключової управлінської  ланки, яка забезпечує стабільне функціонування всієї програмної платформи. Його функціонал передбачає комплексне керування як користувачами, так і бібліотечними фондами, що дозволяє підтримувати систему в актуальному та ефективному стані. 
+Зокрема адміністратор має повноваження створювати, редагувати та видаляти облікові записи користувачів, а також гнучко керувати їхніми ролями — від простого читача до бібліотекаря чи навіть іншого адміністратора, — що забезпечує високий рівень адаптивності системи.
+Крім управління користувачами, адміністратор відповідає за повне супроводження книжкового фонду: додавання нових видань, оновлення існуючих записів, видалення застарілих книг, а також налаштування системних параметрів. Це дозволяє не лише підтримувати каталог в актуальному стані, але й гнучко реагувати на зміни в організаційній структурі бібліотеки. 
+Особливе значення має аналітичний функціонал, оскільки саме він лягає в основу стратегічного прийняття управлінських рішень. Адміністратор може формувати звіти щодо популярності окремих книг, відстежувати активність користувачів, виявляти прострочені позики та аналізувати загальну ефективність роботи бібліотеки (див. рис. Б4). 
+Першим на діаграмі показано процес створення нового облікового запису. Адміністратор надсилає запит до API, після чого серверна логіка ініціює відповідний метод, формує новий запис користувача з потрібною роллю, наприклад, “бібліотекар”, та передає дані до бази даних. Після успішного збереження система повертає підтвердження створення користувача, що забезпечує прозорість та контроль над керуванням ролями. 
+Другий фрагмент діаграми демонструє формування аналітичного звіту на отримання переліку найпопулярніших книг. API викликає серверний метод, який здійснює відповідний SQL-запит, агрегує дані щодо кількості позик і повертає відсортований список. Завдяки цьому адміністратор отримує оперативний доступ до статистики використання фонду, що дозволяє приймати обґрунтовані управлінські рішення на основі реальних показників.
+Таким чином, функції адміністратора охоплюють повний цикл управління бібліотечною діяльністю — від операційного супроводження до стратегічного аналізу — і забезпечують високий рівень автономності, безпеки та аналітичної прозорості всієї системи.
+
+4 ВИСНОВКИ
+	У ході роботи було розглянуто процес створення бізнес-логіки та функцій адміністрування серверної частини програмної системи й реалізовано основні механізми для роботи з користувачами та книгами, а також логіку бронювання, видачі й повернення літератури. Створені UML-діаграми допомогли наочно відобразити взаємодію між компонентами системи та послідовність виконання ключових операцій. Додатково проведено тестування, яке підтвердило коректність роботи серверної частини.
+
+5 ВИКОРИСТАНІ ДЖЕРЕЛА 
+What is activity diagram?. Ideal Modeling & Diagramming Tool for Agile Team Collaboration. URL: https://www.visual-paradigm.com/guide/uml-unified-modeling-language/what-is-activity-diagram/ (date of access: 03.12.2025).
+UML interaction is an emergent behavior which focuses on the observable exchange of information between connectable elements. Unified Modeling Language (UML) description, UML diagram examples, tutorials and reference for all types of UML diagrams - use case diagrams, class, package, component, composite structure diagrams, deployments, activities, interactions, profiles, etc. URL: https://www.uml-diagrams.org/interaction.html?context=interaction-overview (date of access: 03.12.2025).
+Design patterns in python. Refactoring and Design Patterns. URL: https://refactoring.guru/design-patterns/python (date of access: 02.12.2025).
+How to use an API in python – dataquest. Dataquest. URL: https://www.dataquest.io/blog/api-in-python/?utm_source=google&amp;utm_medium=&amp;matchtype=&amp;device=c&amp;utm_campaign=remarketing&amp;campaignid=22944558136&amp;adgroupid=&amp;adid=&amp;utm_content=&amp;gad_source=1&amp;gad_campaignid=22934590983&amp;gbraid=0AAAAADgix8N43cBgqQ95qXPBWg5tocavE&amp;gclid=CjwKCAiAlrXJBhBAEiwA-5pgwjlLX41b2_FudZEXi3jEb6RZer4BlJ6UU0JcJUy0Ee93aEZWt4Lp7hoCKBUQAvD_BwE (date of access: 02.12.2025).
+SQLAlchemy unified tutorial – sqlalchemy 2.0 documentation. SQLAlchemy Documentation – SQLAlchemy 2.0 Documentation. URL: https://docs.sqlalchemy.org/en/20/tutorial/index.html (date of access: 02.12.2025).
+
+ДОДАТОК А 
+Відеозапис 
+Відеозапис доповіді: https://youtu.be/pTV6hc26-Ek
+Хронологічний опис відеозапису:
+0:00 - Вступ
+0:30 - Архітектурні рішення
+2:15 - Бізнес логіка серверної частини
+5:53 - Функції адміністрування серверної частини
+7:40 - Висновки
+8:13 - Показ тестування
+
+
+
+ДОДАТОК Б
+Діаграми
+
+Рисунок Б.1 — UML діаграма діяльності
+
+
+Рисунок Б.2 — UML діаграма взаємодії (читач)
+
+
+Рисунок Б.3 — UML діаграма взаємодії (бібліотекар)
+
+
+Рисунок Б.4 — UML діаграма взаємодії (адміністратор)
+
+ДОДАТОК В
+Програмний код 
+В.1 Програмний код для реалізації CRUD-операцій адміна
+1  from sqlalchemy.orm import Session
+ 2  from sqlalchemy import func
+ 3  from datetime import datetime
+ 4  from models import User, Book, Loan, UserRole
+ 5  from crud.reader import hash_password
+ 6
+ 7  # Створення користувача
+ 8  def create_user(
+ 9      db: Session,
+10      name: str,
+11      email: str,
+12      password: str,
+13      phone: str = None,
+14      role: UserRole = UserRole.READER
+15  ):
+16      # Перевірка унікальності email
+17      if db.query(User).filter(User.email == email).first():
+18          raise ValueError("Користувач з таким email уже існує")
+19
+20      user = User(
+21          name=name,
+22          email=email,
+23          password_hash=hash_password(password),
+24          phone=phone,
+25          role=role
+26      )
+27
+28      db.add(user)
+29      db.commit()
+30      db.refresh(user)
+31      return user
+32
+33  # Отримання списку користувачів
+34  def get_users(db: Session, role: UserRole = None):
+35      query = db.query(User)
+36      if role:
+37          query = query.filter(User.role == role)
+38      return query.all()
+39
+40  # Оновлення користувача
+41  def update_user(db: Session, user_id: int, **kwargs):
+42      user = db.query(User).filter(User.user_id == user_id).first()
+43      if not user:
+44          return None
+45
+46      # Обробка зміни пароля
+47      if "password" in kwargs:
+48          kwargs["password_hash"] = hash_password(kwargs.pop("password"))
+49
+50      # Обробка зміни ролі
+51      if "role" in kwargs:
+52          role = kwargs["role"]
+53          if isinstance(role, str):
+54              try:
+55                  role = UserRole(role)
+56              except ValueError:
+57                  raise ValueError("Недійсна роль користувача")
+58          kwargs["role"] = role
+59
+60      for key, value in kwargs.items():
+61          setattr(user, key, value)
+62
+63      db.commit()
+64      db.refresh(user)
+65      return user
+66
+67  # Видалення користувача
+68  def delete_user(db: Session, user_id: int) -> bool:
+69      user = db.query(User).filter(User.user_id == user_id).first()
+70      if not user:
+71          return False
+72
+73      db.delete(user)
+74      db.commit()
+75      return True
+76
+77  # Зміна ролі користувача
+78  def change_user_role(db: Session, user_id: int, new_role: str):
+79      try:
+80          new_role_enum = UserRole(new_role)
+81      except ValueError:
+82          raise ValueError("Недійсна роль користувача")
+83
+84      user = db.query(User).filter(User.user_id == user_id).first()
+85      if not user:
+86          return None
+87
+88      user.role = new_role_enum
+89      db.commit()
+90      db.refresh(user)
+91      return user
+92
+93  # Топ популярних книг
+94  def get_popular_books(db: Session, limit: int = 10):
+95      return (
+96          db.query(
+97              Book.book_id,
+98              Book.title,
+99              Book.author,
+100             func.count(Loan.loan_id).label("loan_count")
+101         )
+102         .join(Loan, Book.book_id == Loan.book_id)
+103         .group_by(Book.book_id)
+104         .order_by(func.count(Loan.loan_id).desc())
+105         .limit(limit)
+106         .all()
+107     )
+108
+109 # Прострочені позики
+110 def get_overdue_loans(db: Session):
+111     return (
+112         db.query(Loan)
+113         .filter(
+114             Loan.return_date.is_(None),
+115             Loan.due_date < datetime.utcnow()
+116         )
+117         .all()
+118     )
+119
+120 # Активність читачів
+121 def get_reader_activity(db: Session, limit: int = 10):
+122     return (
+123         db.query(
+124             User.user_id,
+125             User.name,
+126             User.email,
+127             func.count(Loan.loan_id).label("loan_count")
+128         )
+129         .join(Loan, User.user_id == Loan.user_id)
+130         .filter(User.role == UserRole.READER)
+131         .group_by(User.user_id)
+132         .order_by(func.count(Loan.loan_id).desc())
+133         .limit(limit)
+134         .all()
+135     )
+
+В.2 Програмний код для реалізації CRUD-операцій бібліотекаря
+1  from sqlalchemy.orm import Session
+ 2  from datetime import datetime, timedelta
+ 3  from models import User, Book, Loan, Reservation, BookStatus, ReservationStatus, UserRole
+ 4
+ 5  # Створення видачі
+ 6  def create_loan(db: Session, user_id: int, book_id: int, days: int = 14):
+ 7      book = db.query(Book).filter(Book.book_id == book_id).first()
+ 8      if not book:
+ 9          raise ValueError("Книга не знайдена")
+10      if book.status == BookStatus.WITHDRAWN:
+11          raise ValueError("Книга списана і недоступна")
+12      if book.status == BookStatus.ISSUED:
+13          raise ValueError("Книга вже видана")
+14
+15      # Перевірка активного бронювання
+16      active_res = db.query(Reservation).filter(
+17          Reservation.book_id == book_id,
+18          Reservation.expiry_date > datetime.utcnow(),
+19          Reservation.status == ReservationStatus.ACTIVE
+20      ).first()
+21
+22      if active_res and active_res.user_id != user_id:
+23          raise ValueError("Книга зарезервована іншим користувачем")
+24
+25      if active_res and active_res.user_id == user_id:
+26          active_res.status = ReservationStatus.COMPLETED
+27
+28      loan = Loan(
+29          user_id=user_id,
+30          book_id=book_id,
+31          due_date=datetime.utcnow() + timedelta(days=days)
+32      )
+33      db.add(loan)
+34      book.status = BookStatus.ISSUED
+35      db.commit()
+36      db.refresh(loan)
+37      return loan
+38
+39  # Повернення книги
+40  def return_book(db: Session, loan_id: int):
+41      loan = db.query(Loan).filter(Loan.loan_id == loan_id).first()
+42      if not loan:
+43          raise ValueError("Позика не знайдена")
+44      if loan.return_date:
+45          raise ValueError("Книга вже повернута")
+46
+47      loan.return_date = datetime.utcnow()
+48      book = loan.book
+49
+50      # Перевірка наявності наступного бронювання
+51      next_res = db.query(Reservation).filter(
+52          Reservation.book_id == book.book_id,
+53          Reservation.expiry_date > datetime.utcnow(),
+54          Reservation.status == ReservationStatus.ACTIVE
+55      ).order_by(Reservation.reservation_date.asc()).first()
+56
+57      if next_res:
+58          book.status = BookStatus.RESERVED
+59      else:
+60          book.status = BookStatus.AVAILABLE
+61
+62      db.commit()
+63      db.refresh(loan)
+64      return loan
+65
+66  # Створення книги
+67  def create_book(db: Session, title: str, author: str, **kwargs):
+68      book = Book(title=title, author=author, **kwargs)
+69      db.add(book)
+70      db.commit()
+71      db.refresh(book)
+72      return book
+73
+74  # Оновлення інформації по книзі
+75  def update_book(db: Session, book_id: int, **kwargs):
+76      from models import BookStatus, BookCondition
+77      book = db.query(Book).filter(Book.book_id == book_id).first()
+78      if not book:
+79          return None
+80
+81      # Обробка енамів
+82      if "status" in kwargs:
+83          try:
+84              kwargs["status"] = BookStatus(kwargs["status"])
+85          except ValueError:
+86              raise ValueError(f"Недійсний статус. Дозволені значення: {[s.value for s in BookStatus]}")
+87
+88      if "condition" in kwargs:
+89          try:
+90              kwargs["condition"] = BookCondition(kwargs["condition"])
+91          except ValueError:
+92              raise ValueError(f"Недійсний стан книги. Дозволені значення: {[c.value for c in BookCondition]}")
+93
+94      # Оновлення інших полів
+95      for key, value in kwargs.items():
+96          if hasattr(book, key):
+97              setattr(book, key, value)
+98          else:
+99              raise ValueError(f"Поле '{key}' не існує в моделі Book")
+100
+101     db.commit()
+102     db.refresh(book)
+103     return book
+104
+105 # Видалення книги
+106 def delete_book(db: Session, book_id: int) -> bool:
+107     book = db.query(Book).filter(Book.book_id == book_id).first()
+108     if not book:
+109         return False
+110     if book.status != BookStatus.WITHDRAWN:
+111         raise ValueError("Можна видаляти лише списані книги (статус 'withdrawn')")
+112     db.delete(book)
+113     db.commit()
+114     return True
+115
+116 # Отримати інформацію по всіх користувачах
+117 def get_all_readers(db: Session):
+118     return db.query(User).filter(User.role == UserRole.READER).all()
+119
+120 # Отримати інформацію про видачі
+121 def get_reader_loans(db: Session, user_id: int):
+122     return db.query(Loan).filter(Loan.user_id == user_id).all()
+
+В.3 Програмний код для реалізації CRUD-операцій читача
+1  from sqlalchemy.orm import Session
+ 2  from models import User, Book, Loan, Reservation
+ 3  import hashlib
+ 4  from datetime import datetime, timedelta
+ 5
+ 6  # Авторизація
+ 7  def hash_password(pw: str) -> str:
+ 8      return hashlib.sha256(pw.encode()).hexdigest()
+ 9
+10  def get_user_by_email(db: Session, email: str) -> User | None:
+11      return db.query(User).filter(User.email == email).first()
+12
+13  def authenticate_user(db: Session, email: str, password: str) -> User | None:
+14      user = get_user_by_email(db, email)
+15      if user and user.password_hash == hash_password(password):
+16          return user
+17      return None
+18
+19  def get_user(db: Session, user_id: int) -> User | None:
+20      return db.query(User).filter(User.user_id == user_id).first()
+21
+22
+23  # Книги
+24  def get_book(db: Session, book_id: int) -> Book | None:
+25      return db.query(Book).filter(Book.book_id == book_id).first()
+26
+27  # Пошук
+28  def search_books(db: Session, q: str):
+29      pattern = f"%{q}%"
+30      return db.query(Book).filter(
+31          Book.title.like(pattern) |
+32          Book.author.like(pattern) |
+33          Book.tags.like(pattern)
+34      ).all()
+35
+36  # Бронювання
+37  def create_reservation(db: Session, user_id: int, book_id: int, days: int = 7):
+38      from models import BookStatus
+39
+40      book = get_book(db, book_id)
+41      if not book:
+42          raise ValueError("Книга не знайдена")
+43
+44      # Перевірка активного бронювання
+45      active_res = db.query(Reservation).filter(
+46          Reservation.book_id == book_id,
+47          Reservation.expiry_date > datetime.utcnow()
+48      ).first()
+49
+50      if active_res:
+51          raise ValueError("Книга вже зарезервована іншим користувачем")
+52
+53      reservation = Reservation(
+54          user_id=user_id,
+55          book_id=book_id,
+56          expiry_date=datetime.utcnow() + timedelta(days=days)
+57      )
+58
+59      if book.status == BookStatus.AVAILABLE:
+60          book.status = BookStatus.RESERVED
+61
+62      db.add(reservation)
+63      db.commit()
+64      db.refresh(reservation)
+65      return reservation
+66
+67  # Активні бронювання
+68  def get_user_active_reservations(db: Session, user_id: int):
+69      return db.query(Reservation).filter(
+70          Reservation.user_id == user_id,
+71          Reservation.expiry_date > datetime.utcnow()
+72      ).all()
+73
+74
+75  # Видача
+76  def get_user_loans(db: Session, user_id: int):
+77      return db.query(Loan).filter(Loan.user_id == user_id).all()
+78
+79  # Активні видачі
+80  def get_active_loans(db: Session, user_id: int):
+81      return db.query(Loan).filter(
+82          Loan.user_id == user_id,
+83          Loan.return_date.is_(None)
+84      ).all()
+85
+86  # Подовжити видачу
+87  def extend_loan(db: Session, loan_id: int, days: int = 7):
+88      loan = db.query(Loan).filter(
+89          Loan.loan_id == loan_id,
+90          Loan.return_date.is_(None)
+91      ).first()
+92
+93      if not loan:
+94          raise ValueError("Активна позика не знайдена або вже повернута")
+95
+96      loan.due_date += timedelta(days=days)
+97      db.commit()
+98      db.refresh(loan)
+99      return loan
+100
+101 # Відмінити бронювання
+102 def cancel_reservation(db: Session, reservation_id: int) -> Reservation | None:
+103     from models import Reservation, ReservationStatus, Book, BookStatus
+104     res = db.query(Reservation).filter(Reservation.reservation_id == reservation_id).first()
+105     if not res:
+106         return None
+107     if res.status != ReservationStatus.ACTIVE:
+108         raise ValueError("Бронювання вже скасовано або завершене")
+109
+110     # Скасовує бронювання
+111     res.status = ReservationStatus.CANCELLED
+112
+113     # Оновлює статус книги. Тобто, якщо вона була reserved, то тепер available
+114     book = db.query(Book).filter(Book.book_id == res.book_id).first()
+115     if book and book.status == BookStatus.RESERVED:
+116         # Перевіряє, чи немає інших активних бронювань на цю книгу
+117         other_active = db.query(Reservation).filter(
+118             Reservation.book_id == book.book_id,
+119             Reservation.reservation_id != reservation_id,
+120             Reservation.status == ReservationStatus.ACTIVE,
+121             Reservation.expiry_date > datetime.utcnow()
+122         ).first()
+123
+124         if not other_active:
+125             book.status = BookStatus.AVAILABLE
+126
+127     db.commit()
+128     db.refresh(res)
+129     return res
+
+В.4 Програмний код для ініціалізації CRUD-операцій
+ 1  # Читач
+ 2  from .reader import search_books, create_reservation, get_user_loans, cancel_reservation
+ 3
+ 4  # Бібліотекар
+ 5  from .librarian import create_loan, return_book, create_book, update_book, delete_book, get_all_readers
+ 6
+ 7  # Адміністратор
+ 8  from .admin import create_user, get_users, update_user, delete_user, change_user_role, get_popular_books, get_overdue_loans
+ 9
+10  # Інші допоміжні функції
+11  from .reader import get_user, get_book, hash_password
+
+В.5 Програмний код для ініціалізації моделей
+1  from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Enum as SQLEnum
+ 2  from sqlalchemy.orm import relationship
+ 3  from datetime import datetime
+ 4  from database import Base
+ 5  from enum import Enum
+ 6
+ 7  class UserRole(str, Enum):
+ 8      READER = "reader"
+ 9      LIBRARIAN = "librarian"
+10      ADMIN = "admin"
+11
+12  class BookStatus(str, Enum):
+13      AVAILABLE = "available"
+14      ISSUED = "issued"
+15      RESERVED = "reserved"
+16      WITHDRAWN = "withdrawn"
+17
+18  class BookCondition(str, Enum):
+19      NEW = "new"
+20      GOOD = "good"
+21      FAIR = "fair"
+22      POOR = "poor"
+23
+24  class ReservationStatus(str, Enum):
+25      ACTIVE = "active"
+26      COMPLETED = "completed"
+27      CANCELLED = "cancelled"
+28      EXPIRED = "expired"
+29
+30  class User(Base):
+31      __tablename__ = "users"
+32      user_id = Column(Integer, primary_key=True, index=True)
+33      name = Column(String(100), nullable=False)
+34      email = Column(String(100), unique=True, index=True, nullable=False)
+35      password_hash = Column(String(256), nullable=False)
+36      phone = Column(String(20))
+37      role = Column(SQLEnum(UserRole), default=UserRole.READER, nullable=False)
+38      loans = relationship("Loan", back_populates="user", cascade="all, delete-orphan")
+39      reservations = relationship("Reservation", back_populates="user", cascade="all, delete-orphan")
+40
+41  class Book(Base):
+42      __tablename__ = "books"
+43      book_id = Column(Integer, primary_key=True, index=True)
+44      title = Column(String(200), nullable=False)
+45      author = Column(String(100), nullable=False)
+46      category = Column(String(50))
+47      isbn = Column(String(20), unique=True)
+48      condition = Column(SQLEnum(BookCondition), default=BookCondition.GOOD)
+49      status = Column(SQLEnum(BookStatus), default=BookStatus.AVAILABLE, nullable=False)
+50      location = Column(String(100))
+51      tags = Column(String(200))
+52      loans = relationship("Loan", back_populates="book", cascade="all, delete-orphan")
+53      reservations = relationship("Reservation", back_populates="book", cascade="all, delete-orphan")
+54
+55  class Loan(Base):
+56      __tablename__ = "loans"
+57      loan_id = Column(Integer, primary_key=True, index=True)
+58      user_id = Column(Integer, ForeignKey("users.user_id"), nullable=False)
+59      book_id = Column(Integer, ForeignKey("books.book_id"), nullable=False)
+60      issue_date = Column(DateTime, default=datetime.utcnow, nullable=False)
+61      due_date = Column(DateTime, nullable=False)
+62      return_date = Column(DateTime)
+63      user = relationship("User", back_populates="loans")
+64      book = relationship("Book", back_populates="loans")
+65
+66  class Reservation(Base):
+67      __tablename__ = "reservations"
+68      reservation_id = Column(Integer, primary_key=True, index=True)
+69      user_id = Column(Integer, ForeignKey("users.user_id"), nullable=False)
+70      book_id = Column(Integer, ForeignKey("books.book_id"), nullable=False)
+71      reservation_date = Column(DateTime, default=datetime.utcnow, nullable=False)
+72      expiry_date = Column(DateTime, nullable=False)
+73      status = Column(SQLEnum(ReservationStatus), default=ReservationStatus.ACTIVE, nullable=False)
+74      user = relationship("User", back_populates="reservations")
+75      book = relationship("Book", back_populates="reservations")
+
+В.4 Програмний код для головної програми
+1  from flask import Flask, request, jsonify
+  2  from database import engine, SessionLocal
+  3  from models import Base
+  4
+  5  # Імпорти CRUD
+  6  from crud.reader import (
+  7      authenticate_user,
+  8      search_books,
+  9      create_reservation,
+ 10      get_user_loans,
+ 11      get_active_loans,
+ 12      get_user_active_reservations,
+ 13      extend_loan,
+ 14      get_user,
+ 15      get_book,
+ 16      cancel_reservation
+ 17  )
+ 18  from crud.librarian import (
+ 19      create_loan,
+ 20      return_book,
+ 21      create_book,
+ 22      update_book,
+ 23      delete_book,
+ 24      get_all_readers,
+ 25      get_reader_loans
+ 26  )
+ 27  from crud.admin import (
+ 28      create_user,
+ 29      get_users,
+ 30      update_user,
+ 31      delete_user,
+ 32      change_user_role,
+ 33      get_popular_books,
+ 34      get_overdue_loans,
+ 35      get_reader_activity
+ 36  )
+ 37
+ 38  app = Flask(__name__)
+ 39  Base.metadata.create_all(bind=engine)
+ 40
+ 41
+ 42  def get_db():
+ 43      db = SessionLocal()
+ 44      try:
+ 45          return db
+ 46      finally:
+ 47          db.close()
+ 48
+ 49
+ 50  # АВТЕНТИФІКАЦІЯ
+ 51  @app.route("/auth/login", methods=["POST"])
+ 52  def login():
+ 53      db = get_db()
+ 54      data = request.get_json()
+ 55      user = authenticate_user(db, data.get("email"), data.get("password"))
+ 56      if not user:
+ 57          return jsonify({"error": "Невірний email або пароль"}), 401
+ 58      return jsonify({
+ 59          "user_id": user.user_id,
+ 60          "name": user.name,
+ 61          "email": user.email,
+ 62          "role": user.role.value
+ 63      })
+ 64
+ 65
+ 66  # ЧИТАЧ
+ 67  @app.route("/books/search")
+ 68  def search_books_route():
+ 69      db = get_db()
+ 70      q = request.args.get("q", "")
+ 71      books = search_books(db, q)
+ 72      return jsonify([{
+ 73          "book_id": b.book_id,
+ 74          "title": b.title,
+ 75          "author": b.author,
+ 76          "status": b.status.value
+ 77      } for b in books])
+ 78
+ 79
+ 80  @app.route("/reservations/", methods=["POST"])
+ 81  def create_reservation_route():
+ 82      db = get_db()
+ 83      data = request.get_json()
+ 84      try:
+ 85          res = create_reservation(db, data["user_id"], data["book_id"])
+ 86          return jsonify({
+ 87              "reservation_id": res.reservation_id,
+ 88              "book_id": res.book_id,
+ 89              "expiry_date": res.expiry_date.isoformat()
+ 90          }), 201
+ 91      except Exception as e:
+ 92          return jsonify({"error": str(e)}), 400
+ 93
+ 94
+ 95  @app.route("/users/<int:user_id>/loans", methods=["GET"])
+ 96  def get_user_loans_route(user_id):
+ 97      db = get_db()
+ 98      loans = get_user_loans(db, user_id)
+ 99      result = []
+100      for loan in loans:
+101          book = get_book(db, loan.book_id)
+102          result.append({
+103              "loan_id": loan.loan_id,
+104              "book_title": book.title,
+105              "due_date": loan.due_date.isoformat(),
+106              "return_date": loan.return_date.isoformat() if loan.return_date else None
+107          })
+108      return jsonify(result)
+109
+110
+111  @app.route("/users/<int:user_id>/loans/active", methods=["GET"])
+112  def get_user_active_loans_route(user_id):
+113      db = get_db()
+114      loans = get_active_loans(db, user_id)
+115      result = []
+116      for loan in loans:
+117          book = get_book(db, loan.book_id)
+118          result.append({
+119              "loan_id": loan.loan_id,
+120              "book_title": book.title,
+121              "due_date": loan.due_date.isoformat()
+122          })
+123      return jsonify(result)
+124
+125
+126  @app.route("/users/<int:user_id>/reservations/active", methods=["GET"])
+127  def get_user_active_reservations_route(user_id):
+128      db = get_db()
+129      reservations = get_user_active_reservations(db, user_id)
+130      return jsonify([{
+131          "reservation_id": r.reservation_id,
+132          "book_id": r.book_id,
+133          "expiry_date": r.expiry_date.isoformat()
+134      } for r in reservations])
+135
+136
+137  @app.route("/loans/<int:loan_id>/extend", methods=["POST"])
+138  def extend_loan_route(loan_id):
+139      db = get_db()
+140      data = request.get_json()
+141      days = data.get("days", 7)
+142      try:
+143          loan = extend_loan(db, loan_id, days)
+144          return jsonify({
+145              "loan_id": loan.loan_id,
+146              "new_due_date": loan.due_date.isoformat()
+147          })
+148      except Exception as e:
+149          return jsonify({"error": str(e)}), 400
+150
+151
+152  @app.route("/reservations/<int:reservation_id>/cancel", methods=["POST"])
+153  def cancel_reservation_route(reservation_id):
+154      db = get_db()
+155      try:
+156          res = cancel_reservation(db, reservation_id)
+157          if not res:
+158              return jsonify({"error": "Бронювання не знайдено"}), 404
+159          return jsonify({
+160              "reservation_id": res.reservation_id,
+161              "status": res.status.value,
+162              "message": "Бронювання успішно скасовано"
+163          })
+164      except ValueError as e:
+165          return jsonify({"error": str(e)}), 400
+166      except Exception as e:
+167          return jsonify({"error": "Внутрішня помилка сервера"}), 500
+168
+169
+170  # БІБЛІОТЕКАР
+171  @app.route("/librarian/users", methods=["GET"])
+172  def librarian_get_readers():
+173      db = get_db()
+174      readers = get_all_readers(db)
+175      return jsonify([{
+176          "user_id": u.user_id,
+177          "name": u.name,
+178          "email": u.email
+179      } for u in readers])
+180
+181
+182  @app.route("/librarian/users/<int:user_id>/loans", methods=["GET"])
+183  def librarian_get_reader_loans(user_id):
+184      db = get_db()
+185      loans = get_reader_loans(db, user_id)
+186      result = []
+187      for loan in loans:
+188          book = get_book(db, loan.book_id)
+189          result.append({
+190              "loan_id": loan.loan_id,
+191              "book_title": book.title,
+192              "due_date": loan.due_date.isoformat(),
+193              "return_date": loan.return_date.isoformat() if loan.return_date else None
+194          })
+195      return jsonify(result)
+196
+197
+198  @app.route("/librarian/loans/", methods=["POST"])
+199  def librarian_create_loan():
+200      db = get_db()
+201      data = request.get_json()
+202      try:
+203          loan = create_loan(db, data["user_id"], data["book_id"])
+204          return jsonify({
+205              "loan_id": loan.loan_id,
+206              "book_id": loan.book_id,
+207              "due_date": loan.due_date.isoformat()
+208          }), 201
+209      except Exception as e:
+210          return jsonify({"error": str(e)}), 400
+211
+212
+213  @app.route("/librarian/loans/<int:loan_id>/return", methods=["POST"])
+214  def librarian_return_loan(loan_id):
+215      db = get_db()
+216      try:
+217          loan = return_book(db, loan_id)
+218          return jsonify({
+219              "message": "Книга була успішно повернута.",
+220              "return_date": loan.return_date.isoformat()
+221          })
+222      except Exception as e:
+223          return jsonify({"error": str(e)}), 400
+224
+225
+226  @app.route("/librarian/books/", methods=["POST"])
+227  def librarian_create_book():
+228      db = get_db()
+229      data = request.get_json()
+230      try:
+231          book = create_book(db, **data)
+232          return jsonify({
+233              "book_id": book.book_id,
+234              "title": book.title,
+235              "author": book.author,
+236              "status": book.status.value
+237          }), 201
+238      except Exception as e:
+239          return jsonify({"error": str(e)}), 400
+240
+241
+242  @app.route("/librarian/books/<int:book_id>", methods=["PUT"])
+243  def librarian_update_book(book_id):
+244      db = get_db()
+245      data = request.get_json() or {}
+246      try:
+247          book = update_book(db, book_id, **data)
+248          if not book:
+249              return jsonify({"error": "Книгу не знайдено"}), 404
+250          return jsonify({
+251              "book_id": book.book_id,
+252              "title": book.title,
+253              "author": book.author,
+254              "status": book.status.value
+255          })
+256      except ValueError as e:
+257          return jsonify({"error": str(e)}), 400
+258      except Exception as e:
+259          return jsonify({"error": "Внутрішня помилка сервера"}), 500
+260
+261
+262  @app.route("/librarian/books/<int:book_id>", methods=["DELETE"])
+263  def librarian_delete_book(book_id):
+264      db = get_db()
+265      try:
+266          success = delete_book(db, book_id)
+267          if not success:
+268              return jsonify({"error": "Книгу не знайдено"}), 404
+269          return jsonify({"message": "Книга видалена"}), 200
+270      except ValueError as e:
+271          return jsonify({"error": str(e)}), 400
+272      except Exception as e:
+273          return jsonify({"error": "Внутрішня помилка сервера"}), 500
+274
+275
+276  # АДМІНІСТРАТОР
+277  @app.route("/admin/users/", methods=["POST"])
+278  def admin_create_user():
+279      db = get_db()
+280      data = request.get_json()
+281      try:
+282          user = create_user(db, **data)
+283          return jsonify({
+284              "user_id": user.user_id,
+285              "name": user.name,
+286              "role": user.role.value
+287          }), 201
+288      except Exception as e:
+289          return jsonify({"error": str(e)}), 400
+290
+291
+292  @app.route("/admin/users/", methods=["GET"])
+293  def admin_get_all_users():
+294      db = get_db()
+295      role = request.args.get("role")
+296      users = get_users(db, role=role)
+297      return jsonify([{
+298          "user_id": u.user_id,
+299          "name": u.name,
+300          "email": u.email,
+301          "role": u.role.value
+302      } for u in users])
+303
+304
+305  @app.route("/admin/users/<int:user_id>", methods=["PUT"])
+306  def admin_update_user(user_id):
+307      db = get_db()
+308      data = request.get_json() or {}
+309      try:
+310          user = update_user(db, user_id, **data)
+311          if not user:
+312              return jsonify({"error": "Користувача не знайдено"}), 404
+313          return jsonify({
+314              "user_id": user.user_id,
+315              "name": user.name,
+316              "email": user.email,
+317              "phone": user.phone,
+318              "role": user.role.value
+319          })
+320      except ValueError as e:
+321          return jsonify({"error": str(e)}), 400
+322      except Exception as e:
+323          return jsonify({"error": "Внутрішня помилка сервера"}), 500
+324
+325
+326  @app.route("/admin/users/<int:user_id>/role", methods=["PUT"])
+327  def admin_change_role(user_id):
+328      db = get_db()
+329      data = request.get_json()
+330      if not data or "role" not in data:
+331          return jsonify({"error": "Поле 'role' обов'язкове"}), 400
+332
+333      try:
+334          user = change_user_role(db, user_id, data["role"])
+335          if not user:
+336              return jsonify({"error": "Користувача не знайдено або недійсна роль"}), 400
+337          return jsonify({
+338              "user_id": user.user_id,
+339              "role": user.role.value
+340          })
+341      except ValueError as e:
+342          return jsonify({"error": str(e)}), 400
+343
+344
+345  @app.route("/admin/users/<int:user_id>", methods=["DELETE"])
+346  def admin_delete_user(user_id):
+347      db = get_db()
+348      try:
+349          success = delete_user(db, user_id)
+350          if not success:
+351              return jsonify({"error": "Користувача не знайдено"}), 404
+352          return jsonify({"message": "Користувач успішно видалений"}), 200
+353      except Exception as e:
+354          return jsonify({"error": "Помилка при видаленні користувача: " + str(e)}), 500
+355
+356
+357  @app.route("/admin/reports/popular-books", methods=["GET"])
+358  def admin_popular_books():
+359      db = get_db()
+360      books = get_popular_books(db)
+361      return jsonify([{
+362          "book_id": b.book_id,
+363          "title": b.title,
+364          "author": b.author,
+365          "loan_count": b.loan_count
+366      } for b in books])
+367
+368
+369  @app.route("/admin/reports/overdue", methods=["GET"])
+370  def admin_overdue_loans():
+371      db = get_db()
+372      loans = get_overdue_loans(db)
+373      result = []
+374      for loan in loans:
+375          user = get_user(db, loan.user_id)
+376          book = get_book(db, loan.book_id)
+377          result.append({
+378              "user": user.name,
+379              "email": user.email,
+380              "book": book.title,
+381              "due_date": loan.due_date.isoformat()
+382          })
+383      return jsonify(result)
+384
+385
+386  @app.route("/admin/reports/reader-activity", methods=["GET"])
+387  def admin_reader_activity():
+388      db = get_db()
+389      limit = request.args.get("limit", 10, type=int)
+390      readers = get_reader_activity(db, limit=limit)
+391      return jsonify([{
+392          "user_id": r.user_id,
+393          "name": r.name,
+394          "email": r.email,
+395          "loan_count": r.loan_count
+396      } for r in readers])
+397
+398
+399  @app.route("/users/<int:user_id>", methods=["GET"])
+400  def get_user_route(user_id):
+401      db = get_db()
+402      user = get_user(db, user_id)
+403      if not user:
+404          return jsonify({"error": "Not found"}), 404
+405      return jsonify({
+406          "user_id": user.user_id,
+407          "name": user.name,
+408          "email": user.email,
+409          "role": user.role.value
+410      })
+411
+412
+413  if __name__ == "__main__":
+414      app.run(debug=True)
+
+В.4 Програмний код для бази даних
+ 1  from sqlalchemy import create_engine
+ 2  from sqlalchemy.ext.declarative import declarative_base
+ 3  from sqlalchemy.orm import sessionmaker
+ 4
+ 5  DATABASE_URL = "sqlite:///library.db"
+ 6  engine = create_engine(DATABASE_URL, echo=False)
+ 7  SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+ 8  Base = declarative_base()
 
