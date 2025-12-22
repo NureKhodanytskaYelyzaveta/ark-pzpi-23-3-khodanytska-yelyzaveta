@@ -1,1 +1,712 @@
+Міністерство освіти і науки України 
+Харківський національний університет радіоелектроніки
 
+
+Кафедра програмної інженерії
+
+Звіт
+з лабораторної роботи № 4
+з дисципліни «Аналіз та рефакторинґ коду»
+на тему: «Програмна система для автоматизації роботи бібліотек»
+
+
+Виконала:                                                                Перевірив:
+ст. гр. ПЗПІ-23-3						ст. викладач катедри ПІ
+Ходаницька Єлизавета 					Сокорчук Ігор Петрович
+
+
+
+
+
+
+
+Харків - 2025
+1 ІСТОРІЯ ЗМІН
+№
+Дата
+Версія звіту
+Опис змін та виправлень
+1
+10.12.2025
+0.1
+Початок роботи над презентацією і доповіддю
+2
+15.12.2025
+0.2
+Редагування попередньої версії
+
+
+2 ЗАВДАННЯ 
+Отримати практичні навички з розробки IoT клієнта, включаючи проектування його архітектури, бізнес логіки, налаштувань, та інтеграцію із серверною частиною. Навчитися використовувати UML для створення діаграм прецедентів та діяльності, а також перевіряти функціональність IoT клієнта через тестування та інтеграцію.
+
+3 ОПИС ВИКОНАНОЇ РОБОТИ
+	3.1 Будова програмного забезпечення IoT клієнта
+	У рамках лабораторної роботи було розроблено IoT-клієнт у вигляді інтелектуального поштомата для безконтактної видачі книг. Цей клієнт призначений для взаємодії з існуючою серверною частиною бібліотечної системи, реалізованою на основі Flask, і повністю делегує бізнес-логіку серверу, зберігаючи цілісність даних та єдину точку прийняття рішень.
+Основна мета рішення — надати користувачам можливість самостійного отримання заброньованої книги. Після створення бронювання через веб-інтерфейс користувач отримує одноразовий код (OTP), який генерується динамічно на сервері. Доступ до комірки поштомата надається лише після успішної валідації цього OTP (див. рис. Б1).
+Взаємодія з сервером здійснюється через REST API, розширений чотирма IoT-специфічними ендпоінтами:
+GET /iot/reservations/<id>/otp — отримання OTP на основі активного резервування;
+POST /iot/lockers/unlock — валідація OTP та отримання ідентифікатора комірки;
+POST /iot/lockers/confirm_pickup — підтвердження факту отримання книги та оформлення позики;
+POST /iot/loans/return_by_book — повернення книги за її ідентифікатором.
+OTP генерується динамічно на сервері за формулою, що включає reservation_id, user_id, book_id та поточну годину UTC. Це дозволяє уникнути змін у моделях даних, тобто, не додається поле otp до таблиці reservations і відповідає принципу мінімального втручання в існуючу архітектуру.
+Архітектура клієнта реалізована у вигляді графічного емулятора на основі tkinter, який імітує роботу фізичного пристрою. На даний момент проєкт передбачає емуляцію апаратної частини: взаємодія з замками комірок, сканерами QR/RFID та індикаторами виконується програмно за допомогою випадкових значень, текстових повідомлень та візуального інтерфейсу. 
+У поточній версії клієнт працює виключно в онлайн-режимі: всі події (видача, повернення) надсилаються на сервер одразу після виконання. Механізм офлайн-режиму з локальною чергою подій є частиною подальшого розвитку системи і буде реалізований у наступних ітераціях для підвищення надійності роботи.
+Клієнт підтримує керування станом комірок, валідацію формату OTP, таймер очікування на забирання книги (60 секунд) та блокування інтерфейсу під час активної сесії, що запобігає помилковим подвійним запитам. Конфігурація здійснюється через файл config.json, що дозволяє легко адаптувати параметри (URL сервера, таймаути, кількість комірок) без зміни коду.
+У майбутньому кожен поштомат матиме унікальний device_id, а сервер зможе обслуговувати довільну кількість клієнтів через той самий REST API без змін у бізнес-логіці. Також планується розширення функціоналу, зокрема підтримка NFC-карт читачів та реальне підключення апаратних модулів.
+	3.2 Бізнес логіка та функції налаштування IoT клієнта
+Основною метою клієнта є забезпечення зручного та надійного обміну даними між фізичним пристроєм і сервером, а також виконання базових операцій, пов’язаних з видачею та поверненням книг через автоматизовані комірки.
+Для організації взаємодії між IoT-клієнтом і сервером було обрано використання REST API поверх протоколу HTTP/HTTPS. Такий підхід зумовлений тим, що серверна частина системи вже реалізована на основі фреймворку Flask і надає повноцінний RESTful-інтерфейс у форматі JSON. Завдяки цьому інтеграція клієнта з сервером не потребувала змін у вже існуючій архітектурі та була простою у реалізації.
+Додатковою перевагою використання HTTP є його універсальність і широка підтримка. Даний протокол добре задокументований і підтримується більшістю мов програмування, зокрема Python, що дозволило швидко реалізувати клієнтську частину без використання сторонніх або спеціалізованих бібліотек. Для підвищення безпеки передачі даних було використано HTTPS, що забезпечує базовий рівень захисту під час обміну конфіденційною інформацією, такою як одноразові коди доступу (OTP), ідентифікатори книг і користувачів.
+Хоча в реальних промислових IoT-рішеннях часто застосовуються протоколи, зокрема MQTT, було обрано HTTP. Це дозволило зменшити складність клієнта, уникнути необхідності розгортання додаткових.
+Бізнес-логіка IoT-клієнта була обмежена та не дублює функціональність серверної частини. Клієнт не приймає рішень щодо можливості видачі книги, перевірки дійсності резервування або зміни стану книги в системі. Усі критично важливі операції, що впливають на стан даних, виконуються виключно на сервері (див. рис. Б2).
+Таким чином, IoT-клієнт було реалізовано як інтелектуальний термінал введення та відображення, основним завданням якого є взаємодія з користувачем і передача відповідних запитів на сервер. Зокрема, клієнт забезпечує введення користувачем OTP-коду та надсилання його на сервер для валідації через відповідний REST-запит. На основі відповіді сервера клієнт виконує відкриття відповідної фізичної комірки та запускає таймер очікування.
+Після того як користувач підтверджує факт отримання книги, клієнт надсилає запит на сервер для оформлення позики. Аналогічно, під час повернення книги реалізовано імітацію її сканування, після чого ідентифікатор книги передається на сервер для завершення операції повернення. Уся логіка, пов’язана зі створенням позик, обробкою черги резервувань і зміною статусів книг (від доступної до виданої і назад), повністю реалізована на сервері за допомогою відповідних CRUD-операцій.
+Такий підхід дозволив забезпечити цілісність даних і уникнути можливих розбіжностей між станом клієнта та сервера. Крім того, централізація бізнес-логіки на сервері спрощує подальшу підтримку та модифікацію системи, оскільки всі зміни в бізнес-правилах вносяться лише в одному місці.
+Налаштування IoT-клієнта було реалізовано через зовнішній конфігураційний файл config.json, що відповідає загальноприйнятим практикам у подібних системах. У цьому файлі зберігаються основні параметри роботи клієнта, зокрема адреса сервера, кількість комірок у поштоматі та мережеві параметри, такі як максимальний час очікування відповіді від сервера.
+Таким чином розроблений IoT-клієнт є мінімальним, але повнофункціональним рішенням, яке відповідає вимогам роботи бібліотеки та розширенню її функціоналу для цифрової епохи, інтегрується з існуючою системою без змін у моделях, і має чіткий шлях до масштабування та подальшого розвитку.
+
+4 ВИСНОВКИ
+	У ході роботи було спроєктовано IoT-клієнт для автоматизованої видачі книг, розроблено його архітектуру, основні елементи бізнес-логіки та механізми налаштування, реалізовано підхід інтеграції IoT-клієнта з серверною частиною системи з чітким розмежуванням відповідальності між клієнтом і сервером, а також були набуті практичні навички використання UML для побудови діаграм прецедентів і діяльності і проведено перевірку коректності функціонування IoT-клієнта шляхом тестування та інтеграції з серверною частиною.
+
+5 ВИКОРИСТАНІ ДЖЕРЕЛА 
+IoT for all | home. IoT For All | Home. URL: https://www.iotforall.com/ (date of access: 14.12.2025).
+What are IoT devices? A definition and examples - Onomondo. Onomondo. URL: https://onomondo.com/blog/iot-devices-explained/ (date of access: 14.12.2025).
+Understanding iot networks: a beginner's guide - device authority. Device Authority. URL: https://deviceauthority.com/understanding-iot-networks-a-beginners-guide/ (date of access: 14.12.2025).
+Unified modeling language (UML) description, UML diagram examples, tutorials and reference for all types of UML diagrams - use case diagrams, class, package, component, composite structure diagrams, deployments, activities, interactions, profiles, etc. Unified Modeling Language (UML) description, UML diagram examples, tutorials and reference for all types of UML diagrams - use case diagrams, class, package, component, composite structure diagrams, deployments, activities, interactions, profiles, etc. URL: https://www.uml-diagrams.org/ (date of access: 14.12.2025).
+UML - quick guide. Free Tutorials on Technical and Non Technical Subjects. URL: https://www.tutorialspoint.com/uml/uml_quick_guide.htm (date of access: 14.12.2025).
+
+ДОДАТОК А 
+Відеозапис 
+Відеозапис доповіді: https://youtu.be/ohM6Q4w8-Ow
+Хронологічний опис відеозапису:
+0:00 - Вступ
+0:15 - Будова програмного забезпечення IoT клієнта
+2:20 - Бізнес логіка та функції налаштування IoT клієнта
+3:17 - Висновки
+3:46 - Тестування
+
+
+
+
+ДОДАТОК Б
+Діаграми
+
+Рисунок Б.1 — UML діаграма прецедентів
+
+Рисунок Б.2 — UML діаграма діяльності
+
+
+ДОДАТОК В
+Програмний код 
+В.1 Програмний код для запуску IoT
+ 1 from gui_sim import LockerSimulator
+ 2 import tkinter as tk
+ 3
+ 4 def main():
+ 5     root = tk.Tk()
+ 6     app = LockerSimulator(root)
+ 7     root.mainloop()
+ 8
+ 9 if __name__ == "__main__":
+10     main()
+
+В.2 Програмний код для конфігурації IoT
+ 1 SERVER_URL = "http://localhost:5000"
+ 2
+ 3 COLORS = {
+ 4     'primary': '#4285F4',
+ 5     'secondary': '#34A853',
+ 6     'danger': '#EA4335',
+ 7     'background': '#F9F9F9',
+ 8     'panel_bg': '#FFFFFF',
+ 9     'text_dark': '#3C4043',
+10     'text_light': '#FFFFFF',
+11     'grey_light': '#E8EAED',
+12 }
+13
+14 LOCKER_CELLS = {
+15     "A1": {"occupied": False, "book_id": None, "open": False},
+16     "A2": {"occupied": False, "book_id": None, "open": False},
+17     "A3": {"occupied": False, "book_id": None, "open": False},
+18     "A4": {"occupied": False, "book_id": None, "open": False},
+19     "A5": {"occupied": False, "book_id": None, "open": False},
+20 }
+
+В.3 Програмний код для конфігурації IoT.json
+1 {
+2   "server_url": "http://localhost:5000",
+3   "locker_id_prefix": "A",
+4   "max_locker_cells": 5,
+5   "network_timeout_sec": 5,
+6   "retry_interval_sec": 30,
+7   "pickup_timeout_sec": 30
+8 }
+
+В.4 Програмний код для IoT + GUI
+1 import tkinter as tk
+   2 from tkinter import ttk, messagebox
+   3 import requests
+   4 import threading
+   5 import time
+   6 from datetime import datetime
+   7 from config import COLORS, SERVER_URL, LOCKER_CELLS
+   8 
+   9 class LockerSimulator:
+  10     # Ініціалізація головного вікна
+  11     def __init__(self, root):
+  12         self.root = root
+  13         self.root.title("📚 Бібліотечний Поштомат")
+  14         self.root.geometry("1100x800")
+  15         
+  16         self.colors = COLORS
+  17         self.server_url = SERVER_URL
+  18         self.locker_cells = LOCKER_CELLS.copy() 
+  19         self.current_session = {
+  20             "locker_id": None,
+  21             "book_id": None,
+  22             "user_id": None,
+  23             "unlock_time": None
+  24         }
+  25         
+  26         self.setup_styles()
+  27         self.root.configure(bg=self.colors['background'])
+  28         self.setup_ui()
+  29         self.update_status("Вітаємо! Введіть OTP-код для отримання книги", self.colors['text_dark'])
+  30     
+  31     # Налаштовує стилі елементів інтерфейсу
+  32     def setup_styles(self):
+  33         style = ttk.Style()
+  34         style.theme_use('clam')
+  35     
+  36         style.configure('Flat.TButton', 
+  37                         font=('Consolas', 12, 'bold'),
+  38                         foreground=self.colors['text_light'],
+  39                         relief=tk.FLAT,
+  40                         bordercolor=self.colors['primary'],
+  41                         borderwidth=0,
+  42                         padding=(15, 10))
+  43         
+  44         style.map('Flat.TButton',
+  45                   background=[('active', self.colors['primary'])])
+  46 
+  47         style.configure('Success.Flat.TButton', 
+  48                         background=self.colors['secondary'],
+  49                         foreground=self.colors['text_light'])
+  50         style.map('Success.Flat.TButton',
+  51                   background=[('active', '#2E8B57')])
+  52 
+  53         style.configure('Light.Flat.TButton', 
+  54                         background=self.colors['grey_light'],
+  55                         foreground=self.colors['text_dark'],
+  56                         font=('Consolas', 12, 'normal'))
+  57         style.map('Light.Flat.TButton',
+  58                   background=[('active', '#D3D3D3')])
+  59 
+  60         style.configure('Otp.TEntry', 
+  61                         font=('Consolas', 24, 'bold'),
+  62                         fieldbackground=self.colors['grey_light'],
+  63                         foreground=self.colors['primary'],
+  64                         padding=(10, 10),
+  65                         relief=tk.FLAT,
+  66                         borderwidth=0)
+  67         
+  68         style.configure('TCombobox', 
+  69                         fieldbackground=self.colors['grey_light'], 
+  70                         background=self.colors['panel_bg'],
+  71                         foreground=self.colors['text_dark'],
+  72                         font=('Consolas', 11))
+  73 
+  74         style.configure('Card.TFrame', background=self.colors['panel_bg'], relief='flat')
+  75     
+  76     # Створює весь графічний інтерфейс
+  77     def setup_ui(self):
+  78         header_frame = tk.Frame(self.root, bg=self.colors['primary'], height=120)
+  79         header_frame.pack(fill=tk.X)
+  80         header_frame.pack_propagate(False)
+  81         
+  82         title_label = tk.Label(header_frame, 
+  83                               text="📚 БІБЛІОТЕЧНИЙ ПОШТОМАТ",
+  84                               font=('Consolas', 32, 'bold'),
+  85                               bg=self.colors['primary'],
+  86                               fg=self.colors['text_light'])
+  87         title_label.pack(pady=(15, 0))
+  88         
+  89         subtitle_label = tk.Label(header_frame,
+  90                                   text="Система самостійної видачі книг",
+  91                                   font=('Consolas', 14),
+  92                                   bg=self.colors['primary'],
+  93                                   fg='#A3D8FF')
+  94         subtitle_label.pack(pady=(5, 15))
+  95         
+  96         main_container = tk.Frame(self.root, bg=self.colors['background'])
+  97         main_container.pack(fill=tk.BOTH, expand=True, padx=40, pady=30)
+  98         
+  99         left_column = ttk.Frame(main_container, style='Card.TFrame', padding=25)
+ 100         left_column.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 20))
+ 101         
+ 102         screen_frame = tk.Frame(left_column, bg=self.colors['grey_light'], relief=tk.FLAT, bd=0)
+ 103         screen_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 20))
+ 104         
+ 105         screen_header = tk.Frame(screen_frame, bg=self.colors['primary'], height=50)
+ 106         screen_header.pack(fill=tk.X)
+ 107         screen_header.pack_propagate(False)
+ 108         
+ 109         tk.Label(screen_header, text="ІНТЕРАКТИВНИЙ ЕКРАН", 
+ 111                  font=('Consolas', 15, 'bold'),
+ 112                  bg=self.colors['primary'],
+ 113                  fg=self.colors['text_light']).pack(expand=True)
+ 114         
+ 115         self.status_label = tk.Label(screen_frame,
+ 116                                      text="",
+ 117                                      font=('Consolas', 18, 'bold'),
+ 118                                      bg=self.colors['grey_light'],
+ 119                                      fg=self.colors['text_dark'],
+ 120                                      justify=tk.CENTER,
+ 121                                      wraplength=450,
+ 122                                      pady=40)
+ 123         self.status_label.pack(fill=tk.BOTH, expand=True)
+ 124         
+ 125         input_frame = tk.Frame(left_column, bg=self.colors['panel_bg'])
+ 126         input_frame.pack(fill=tk.X, pady=(10, 20))
+ 127         
+ 128         tk.Label(input_frame,
+ 129                  text="ВВЕДІТЬ ОДНОРАЗОВИЙ КОД (OTP):",
+ 130                  font=('Consolas', 13, 'bold'),
+ 131                  bg=self.colors['panel_bg'],
+ 132                  fg=self.colors['text_dark']).pack(pady=(0, 10))
+ 133         
+ 134         self.otp_entry = ttk.Entry(input_frame,
+ 135                                    style='Otp.TEntry',
+ 136                                    width=8,
+ 137                                    justify=tk.CENTER)
+ 138         self.otp_entry.pack(pady=(0, 15))
+ 139         self.otp_entry.bind('<Return>', lambda e: self.verify_otp())
+ 140         
+ 141         button_frame = tk.Frame(left_column, bg=self.colors['panel_bg'])
+ 142         button_frame.pack(fill=tk.X)
+ 143         
+ 144         self.verify_btn = ttk.Button(button_frame,
+ 145                                      text="ПІДТВЕРДИТИ",
+ 146                                      style='Success.Flat.TButton',
+ 147                                      width=15,
+ 148                                      command=self.verify_otp)
+ 149         self.verify_btn.pack(side=tk.LEFT, expand=True, padx=(0, 10))
+ 150         
+ 151         self.clear_btn = ttk.Button(button_frame,
+ 152                                     text="ОЧИСТИТИ",
+ 153                                     style='Light.Flat.TButton',
+ 154                                     width=15,
+ 155                                     command=self.clear_otp)
+ 156         self.clear_btn.pack(side=tk.LEFT, expand=True)
+ 157         
+ 158         self.timer_label = tk.Label(left_column,
+ 159                                      text="",
+ 160                                      font=('Consolas', 14, 'bold'),
+ 161                                      bg=self.colors['panel_bg'],
+ 162                                      fg=self.colors['danger'])
+ 163         self.timer_label.pack(pady=20)
+ 164         
+ 165         right_column = tk.Frame(main_container, bg=self.colors['background'])
+ 166         right_column.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
+ 167         
+ 168         cells_header = tk.Frame(right_column, bg=self.colors['text_dark'], height=50)
+ 169         cells_header.pack(fill=tk.X)
+ 170         cells_header.pack_propagate(False)
+ 171         
+ 172         tk.Label(cells_header,
+ 173                  text="ОГЛЯД КОМІРОК",
+ 174                  font=('Consolas', 15, 'bold'),
+ 175                  bg=self.colors['text_dark'],
+ 176                  fg=self.colors['text_light']).pack(expand=True)
+ 177         
+ 178         cells_container = tk.Frame(right_column, bg=self.colors['background'])
+ 179         cells_container.pack(fill=tk.BOTH, expand=True, pady=20)
+ 180         
+ 181         self.cell_widgets = {}
+ 182         
+ 183         for col in range(3):
+ 184             cells_container.grid_columnconfigure(col, weight=1, uniform='cell')
+ 185         for row in range(2):
+ 186             cells_container.grid_rowconfigure(row, weight=1, uniform='cell')
+ 187         
+ 188         cell_ids = sorted(self.locker_cells.keys())
+ 189         for i, cell_id in enumerate(cell_ids):
+ 190             row = i // 3
+ 191             col = i % 3
+ 192             
+ 193             cell_frame = tk.Frame(cells_container,
+ 194                                   bg=self.colors['panel_bg'],
+ 195                                   relief=tk.FLAT,
+ 196                                   bd=1,
+ 197                                   highlightbackground=self.colors['grey_light'],
+ 198                                   highlightthickness=1)
+ 199             cell_frame.grid(row=row, column=col, padx=10, pady=30, sticky='nsew')
+ 200             
+ 201             status_icon = tk.Label(cell_frame,
+ 202                                    text="🔒",
+ 203                                    font=('Consolas', 30),
+ 204                                    bg=self.colors['panel_bg'],
+ 205                                    fg=self.colors['primary'])
+ 206             status_icon.pack(pady=(25, 10))
+ 207             
+ 208             cell_id_label = tk.Label(cell_frame,
+ 209                                      text=f"КОМІРКА {cell_id}",
+ 210                                      font=('Consolas', 14, 'bold'),
+ 211                                      bg=self.colors['panel_bg'],
+ 212                                      fg=self.colors['text_dark'])
+ 213             cell_id_label.pack()
+ 214 
+ 215             status_label = tk.Label(cell_frame,
+ 216                                     text="ЗАБЛОКОВАНА",
+ 217                                     font=('Consolas', 11),
+ 218                                     bg=self.colors['panel_bg'],
+ 219                                     fg=self.colors['primary'])
+ 220             status_label.pack(pady=(5, 20))
+ 221             
+ 222             self.cell_widgets[cell_id] = {
+ 223                 'frame': cell_frame,
+ 224                 'icon': status_icon,
+ 225                 'id_label': cell_id_label,
+ 226                 'status': status_label
+ 227             }
+ 228         
+ 229         total_cells = len(cell_ids)
+ 230         if total_cells < 6:
+ 231             for i in range(total_cells, 6):
+ 232                 row = i // 3
+ 233                 col = i % 3
+ 234                 empty_frame = tk.Frame(cells_container, bg=self.colors['background'])
+ 235                 empty_frame.grid(row=row, column=col, padx=10, pady=10, sticky='nsew')
+ 236         
+ 237         log_frame = tk.Frame(self.root, bg=self.colors['panel_bg'], relief=tk.FLAT, bd=0)
+ 238         log_frame.pack(fill=tk.X, padx=40, pady=(0, 20))
+ 239         
+ 240         log_header = tk.Frame(log_frame, bg=self.colors['text_dark'], height=30)
+ 241         log_header.pack(fill=tk.X)
+ 242         log_header.pack_propagate(False)
+ 243         
+ 244         tk.Label(log_header,
+ 245                  text="ЖУРНАЛ СИСТЕМИ",
+ 246                  font=('Consolas', 11, 'bold'),
+ 247                  bg=self.colors['text_dark'],
+ 248                  fg=self.colors['text_light']).pack(expand=True)
+ 249         
+ 250         self.log_text = tk.Text(log_frame,
+ 251                                  height=4,
+ 252                                  font=('Consolas', 10),
+ 253                                  bg='#2C3E50',
+ 254                                  fg='#76F77B', 
+ 255                                  state=tk.DISABLED,
+ 256                                  relief=tk.FLAT)
+ 257         self.log_text.pack(fill=tk.X, pady=(0, 5))
+ 258         
+ 259         self.create_menu()
+ 260 
+ 261     # Створює верхнє меню з адміністративними діями  
+ 262     def create_menu(self):
+ 263         menubar = tk.Menu(self.root, bg=self.colors['panel_bg'], fg=self.colors['text_dark'])
+ 264         self.root.config(menu=menubar)
+ 265         
+ 266         admin_menu = tk.Menu(menubar, tearoff=0, bg=self.colors['panel_bg'], fg=self.colors['text_dark'])
+ 267         menubar.add_cascade(label="Управління", menu=admin_menu)
+ 268         admin_menu.add_command(label="Відкрити комірку (Адмін)", command=self.admin_unlock_cell)
+ 269         admin_menu.add_command(label="Примусово завершити (Адмін)", command=self.admin_force_confirm)
+ 270         admin_menu.add_separator()
+ 271         admin_menu.add_command(label="Перезавантажити Систему", command=self.reset_system)
+ 272     
+ 273     # Додає повідомлення у журнал системи
+ 274     def log(self, message):
+ 275         timestamp = datetime.now().strftime("%H:%M:%S")
+ 276         log_entry = f"[{timestamp}] {message}\n"
+ 277         
+ 278         self.log_text.config(state=tk.NORMAL)
+ 279         self.log_text.insert(tk.END, log_entry)
+ 280         
+ 281         if int(self.log_text.index('end-1c').split('.')[0]) > 50:
+ 282             self.log_text.delete(1.0, 2.0)
+ 283             
+ 284         self.log_text.see(tk.END)
+ 285         self.log_text.config(state=tk.DISABLED)
+ 286     
+ 287     # Оновлює текст повідомлення на екрані
+ 288     def update_status(self, message, color=None):
+ 289         if not color:
+ 290             color = self.colors['text_dark']
+ 291             
+ 292         self.status_label.config(text=message, fg=color)
+ 293         self.log(message)
+ 294 
+ 295     # Очищає поле введення OTP-коду   
+ 296     def clear_otp(self):
+ 297         self.otp_entry.delete(0, tk.END)
+ 298 
+ 299     # Перевіряє коректність OTP та запускає асинхронну перевірку  
+ 300     def verify_otp(self):
+ 301         otp = self.otp_entry.get().strip()
+ 302         
+ 303         if len(otp) != 6 or not otp.isdigit():
+ 304             self.update_status("Помилка: OTP має містити 6 цифр", self.colors['danger'])
+ 305             messagebox.showerror("Помилка", "OTP має містити рівно 6 цифр")
+ 306             return
+ 307         
+ 308         self.update_status("Перевірка OTP...", self.colors['primary'])
+ 309         self.verify_btn.state(['disabled'])
+ 310         self.otp_entry.config(state=tk.DISABLED)
+ 311         
+ 312         threading.Thread(target=self._verify_otp_async, args=(otp,), daemon=True).start()
+ 313 
+ 314     # Асинхронно надсилає OTP на сервер для перевірки    
+ 315     def _verify_otp_async(self, otp):
+ 316         try:
+ 317             response = requests.post(
+ 318                 f"{self.server_url}/iot/lockers/unlock",
+ 319                 json={"otp": otp},
+ 320                 timeout=5
+ 321             )
+ 322             
+ 323             if response.status_code == 200:
+ 324                 data = response.json()
+ 325                 self.current_session.update({
+ 326                     "locker_id": data.get('locker_id'),
+ 327                     "book_id": data.get('book_id'),
+ 328                     "user_id": data.get('user_id'),
+ 329                     "unlock_time": time.time()
+ 330                 })
+ 331                 
+ 332                 self.root.after(0, self.unlock_cell, data.get('locker_id'))
+ 333             else:
+ 334                 error_msg = response.json().get('error', 'Невідома помилка')
+ 335                 self.root.after(0, self.show_error, error_msg)
+ 336                 
+ 337         except requests.exceptions.RequestException as e:
+ 338             self.root.after(0, self.show_error, f"Помилка з'єднання: {str(e)}")
+ 339 
+ 340     # Показує помилку користувачу та відновлює інтерфейс       
+ 341     def show_error(self, message):
+ 342         self.update_status(f"Помилка: {message}", self.colors['danger'])
+ 343         messagebox.showerror("Помилка", message)
+ 344         self.clear_otp()
+ 345         self.otp_entry.config(state=tk.NORMAL)
+ 346         self.verify_btn.state(['!disabled'])
+ 347 
+ 348     # Відчиняє комірку та змінює її стан в інтерфейсі 
+ 349     def unlock_cell(self, locker_id):
+ 350         if locker_id not in self.locker_cells:
+ 351             self.show_error(f"Комірка {locker_id} не існує")
+ 352             return
+ 353         
+ 354         self.log(f"Відкриття комірки {locker_id}")
+ 355         
+ 356         cell = self.cell_widgets[locker_id]
+ 357         cell['frame'].config(bg=self.colors['secondary'], highlightbackground=self.colors['secondary'])
+ 358         cell['icon'].config(text="🔓", fg=self.colors['text_light'], bg=self.colors['secondary'])
+ 359         cell['status'].config(text="ВІДКРИТА - ЗАБЕРІТЬ", fg=self.colors['text_light'], bg=self.colors['secondary'], font=('Consolas', 11, 'bold'))
+ 360         
+ 361         self.locker_cells[locker_id]['open'] = True
+ 362         
+ 363         self.update_status(
+ 364             f"Комірка {locker_id} відкрита!\nЗаберіть книгу протягом 60 секунд.",
+ 365             self.colors['secondary']
+ 366         )
+ 367         
+ 368         self.otp_entry.config(state=tk.DISABLED)
+ 369         self.verify_btn.state(['disabled'])
+ 370         self.clear_btn.state(['disabled'])
+ 371 
+ 372         self.otp_entry.config(state=tk.DISABLED)
+ 373         self.verify_btn.state(['disabled'])
+ 374         self.clear_btn.state(['disabled'])
+ 375         
+ 376         self.start_pickup_timer()
+ 377     
+ 378     # Запускає таймер     
+ 379     def start_pickup_timer(self):
+ 380         timeout = 60
+ 381         
+ 382         def countdown():
+ 383             if not self.current_session['unlock_time']:
+ 384                 return
+ 385                 
+ 386             remaining = timeout - int(time.time() - self.current_session['unlock_time'])
+ 387             
+ 388             if remaining <= 0:
+ 389                 self.root.after(0, self.confirm_pickup_dialog)
+ 390             else:
+ 391                 timer_color = self.colors['danger'] if remaining < 10 else self.colors['primary']
+ 392                 self.timer_label.config(
+ 393                     text=f"⏳ Лишилося {remaining} сек на те, аби забрати книгу",
+ 394                     fg=timer_color
+ 395                 )
+ 396                 self.root.after(1000, countdown)
+ 397         
+ 398         countdown()
+ 399 
+ 400     # Показує, чи забрано книгу
+ 401     def confirm_pickup_dialog(self):
+ 402         result = messagebox.askyesno(
+ 403             "Підтвердження",
+ 404             "Ви забрали книгу з комірки? Натисніть ТАК, щоб підтвердити позику.",
+ 405             icon='question'
+ 406         )
+ 407         
+ 408         if result:
+ 409             self.confirm_pickup()
+ 410         else:
+ 411             self.cancel_pickup()
+ 412 
+ 413     # Запускає процес підтвердження видачі
+ 414     def confirm_pickup(self):
+ 415         locker_id = self.current_session['locker_id']
+ 416         
+ 417         if not locker_id:
+ 418             return
+ 419             
+ 420         self.update_status("...Підтвердження видачі...", self.colors['primary'])
+ 421 
+ 422         threading.Thread(target=self._confirm_pickup_async, daemon=True).start()
+ 423 
+ 424     # Асинхронно підтверджує видачу книги
+ 425     def _confirm_pickup_async(self):
+ 426         locker_id = self.current_session['locker_id']
+ 427         try:
+ 428             response = requests.post(
+ 429                 f"{self.server_url}/iot/lockers/confirm_pickup",
+ 430                 json={
+ 431                     "user_id": self.current_session['user_id'],
+ 432                     "book_id": self.current_session['book_id']
+ 433                 },
+ 434                 timeout=5
+ 435             )
+ 436             
+ 437             if response.status_code == 200:
+ 438                 data = response.json()
+ 439                 loan_id = data.get('loan_id')
+ 440                 due_date = data.get('due_date')
+ 441                 
+ 442                 self.root.after(0, lambda: self.update_status(
+ 443                     f"🎉 Успішно!\nПозика #{loan_id}\nТермін: {due_date[:10]}\n\nПриємного читання!",
+ 444                     self.colors['secondary']
+ 445                 ))
+ 446                 
+ 447                 self.log(f"Книгу видано (Позика #{loan_id})")
+ 448                 self.root.after(0, self.close_cell, locker_id)
+ 449                 
+ 450                 self.root.after(0, lambda: messagebox.showinfo(
+ 451                     "Успіх!",
+ 452                     f"Книгу видано!\nПозика #{loan_id}\n"
+ 453                     f"Повернути до: {due_date[:10]}"
+ 454                 ))
+ 455                 
+ 456                 self.root.after(3000, self.reset_session)
+ 457             else:
+ 458                 error = response.json().get('error', 'Невідома помилка')
+ 459                 self.root.after(0, self.show_error, error)
+ 460                 
+ 461         except requests.exceptions.RequestException as e:
+ 462             self.root.after(0, self.show_error, f"Помилка підтвердження: {str(e)}")
+ 463 
+ 464     # Обробляє ситуацію, коли книгу не забрали
+ 465     def cancel_pickup(self):
+ 466         locker_id = self.current_session['locker_id']
+ 467         
+ 468         self.log(f"Книгу не забрано з комірки {locker_id}")
+ 469         self.update_status("Книгу не забрано. Комірка закривається...", self.colors['danger'])
+ 470         
+ 471         self.close_cell(locker_id)
+ 472         
+ 473         messagebox.showwarning(
+ 474             "Увага",
+ 475             "Книгу не забрано вчасно. Комірка заблокована.\nСпробуйте знову пізніше."
+ 476         )
+ 477         
+ 478         self.root.after(2000, self.reset_session)
+ 479 
+ 480     # Зачиняє комірку та скидає її стан
+ 481     def close_cell(self, locker_id):
+ 482         self.log(f"Закриття комірки {locker_id}")
+ 483         
+ 484         if locker_id not in self.cell_widgets:
+ 485              self.log(f"Помилка: Віджет для комірки {locker_id} не знайдено.")
+ 486              return
+ 487              
+ 488         cell = self.cell_widgets[locker_id]
+ 489         cell['frame'].config(bg=self.colors['panel_bg'], highlightbackground=self.colors['grey_light'])
+ 490         cell['icon'].config(text="🔒", fg=self.colors['primary'], bg=self.colors['panel_bg'])
+ 491         cell['status'].config(text="ЗАБЛОКОВАНА", fg=self.colors['primary'], bg=self.colors['panel_bg'], font=('Consolas', 11))
+ 492         
+ 493         self.locker_cells[locker_id]['open'] = False
+ 494         self.locker_cells[locker_id]['occupied'] = False
+ 495         self.locker_cells[locker_id]['book_id'] = None
+ 496 
+ 497     # Скидає поточну сесію та повертає систему у початковий стан    
+ 498     def reset_session(self):
+ 499         self.current_session = {
+ 500             "locker_id": None,
+ 501             "book_id": None,
+ 502             "user_id": None,
+ 503             "unlock_time": None
+ 504         }
+ 505         
+ 506         self.update_status("Вітаємо! Введіть OTP код для отримання книги", self.colors['text_dark'])
+ 507         self.timer_label.config(text="")
+ 508         self.clear_otp()
+ 509         self.otp_entry.config(state=tk.NORMAL)
+ 510         self.verify_btn.state(['!disabled'])
+ 511         self.clear_btn.state(['!disabled'])
+ 512 
+ 513     # Для примусового відкриття комірки 
+ 514     def admin_unlock_cell(self):
+ 515         dialog = tk.Toplevel(self.root)
+ 516         dialog.title("Відкрити комірку (Адмін)")
+ 517         dialog.geometry("300x150")
+ 518         dialog.configure(bg=self.colors['panel_bg'])
+ 519         dialog.transient(self.root)
+ 520         dialog.grab_set()
+ 521         
+ 522         tk.Label(dialog, 
+ 523                  text="Виберіть комірку:",
+ 524                  bg=self.colors['panel_bg'],
+ 525                  fg=self.colors['text_dark'],
+ 526                  font=('Consolas', 11, 'bold')).pack(pady=15)
+ 527         
+ 528         locker_var = tk.StringVar()
+ 529         locker_combo = ttk.Combobox(dialog, 
+ 530                                     textvariable=locker_var,
+ 531                                     values=list(self.locker_cells.keys()),
+ 532                                     state='readonly',
+ 533                                     style='TCombobox')
+ 534         locker_combo.pack(pady=10)
+ 535         
+ 536         def unlock():
+ 537             locker_id = locker_var.get()
+ 538             if locker_id:
+ 539                 self.current_session['locker_id'] = locker_id
+ 540                 self.current_session['book_id'] = f"BOOK-{locker_id}"
+ 541                 self.current_session['user_id'] = "ADMIN-001"
+ 542                 self.current_session['unlock_time'] = time.time()
+ 543                 self.unlock_cell(locker_id)
+ 544                 dialog.destroy()
+ 545         
+ 546         ttk.Button(dialog,
+ 547                    text="Відкрити",
+ 548                    command=unlock,
+ 549                    style='Flat.TButton',
+ 550                    width=10).pack(pady=10)
+ 551 
+ 552     # Примусове завершення активної сесії
+ 553     def admin_force_confirm(self):
+ 554         if self.current_session["locker_id"] is None:
+ 555             messagebox.showinfo("Інформація", "Немає активної сесії видачі.")
+ 556             return
+ 557         self.log(f"Адмін: Примусове завершення сесії для комірки {self.current_session['locker_id']}")
+ 558         self.confirm_pickup_dialog()
+ 559 
+ 560     # перезавантаження системи
+ 561     def reset_system(self):
+ 562         for locker_id in self.locker_cells:
+ 563             if self.locker_cells[locker_id]['open']:
+ 564                 self.close_cell(locker_id)
+ 565         
+ 566         self.reset_session()
+ 567         self.log("СИСТЕМА ПЕРЕЗАВАНТАЖЕНА")
+ 568         messagebox.showinfo("Система", "Поштомат перезавантажено")
