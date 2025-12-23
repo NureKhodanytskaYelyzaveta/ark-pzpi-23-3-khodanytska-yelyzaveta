@@ -1,0 +1,169 @@
+### Вхід користувача в систему
+POST http://localhost:5000/auth/login
+Content-Type: application/json
+
+{
+  "email": "lalalala@test.com",
+  "password": "123"
+}
+
+# READER
+
+### Пошук книг за ключовим словом
+GET http://localhost:5000/books/search?q=Шевченко
+
+### Створення бронювання книги
+POST http://localhost:5000/reservations/
+Content-Type: application/json
+
+{
+  "user_id": 9,
+  "book_id": 12
+}
+
+### Отримання всіх позик користувача
+GET http://localhost:5000/users/9/loans
+
+### Отримання лише активних позик користувача
+GET http://localhost:5000/users/9/loans/active
+
+### Отримання активних бронювань користувача
+GET http://localhost:5000/users/9/reservations/active
+
+### Продовження строку позики
+POST http://localhost:5000/loans/9/extend
+Content-Type: application/json
+
+{
+  "days": 7
+}
+
+### Скасування активного бронювання
+POST http://localhost:5000/reservations/12/cancel
+
+### Отримання профілю користувача
+GET http://localhost:5000/users/9
+
+
+# LIBRARIAN
+
+### Отримання списку всіх читачів
+GET http://localhost:5000/librarian/users
+
+### Перегляд позик конкретного читача
+GET http://localhost:5000/librarian/users/1/loans
+
+### Оформлення видачі книги читачу
+POST http://localhost:5000/librarian/loans/
+Content-Type: application/json
+
+{
+  "user_id": 9,
+  "book_id": 12
+}
+
+### Повернення книги бібліотекарем
+POST http://localhost:5000/librarian/loans/9/return
+
+### Додавання нової книги до каталогу
+POST http://localhost:5000/librarian/books/
+Content-Type: application/json
+
+{
+  "title": "Clean Code",
+  "author": "Robert Martin",
+  "category": "Programming",
+  "isbn": "9780132350884",
+  "location": "Lalala Street 5",
+  "tags": "clean,code,software"
+}
+
+### Оновлення інформації про книгу
+PUT http://localhost:5000/librarian/books/12
+Content-Type: application/json
+
+{
+  "status": "withdrawn"
+}
+
+### Видалення книги з каталогу
+DELETE http://localhost:5000/librarian/books/12
+
+
+# ADMIN
+
+### Створення нового користувача системи
+POST http://localhost:5000/admin/users/
+Content-Type: application/json
+
+{
+  "name": "TestUser12345687890",
+  "email": "testikuser13456@test.com",
+  "password": "123",
+  "role": "reader"
+}
+
+### Отримання списку всіх користувачів
+GET http://localhost:5000/admin/users/
+
+### Отримання користувачів за роллю
+GET http://localhost:5000/admin/users/?role=reader
+
+### Оновлення даних користувача
+PUT http://localhost:5000/admin/users/1
+Content-Type: application/json
+
+{
+  "phone": "+380991234567"
+}
+
+### Зміна ролі користувача
+PUT http://localhost:5000/admin/users/1/role
+Content-Type: application/json
+
+{
+  "role": "librarian"
+}
+
+### Видалення користувача з системи
+DELETE http://localhost:5000/admin/users/9
+
+### Отримання звіту про найпопулярніші книги
+GET http://localhost:5000/admin/reports/popular-books
+
+### Отримання списку прострочених позик
+GET http://localhost:5000/admin/reports/overdue
+
+### Отримання звіту про активність читачів
+GET http://localhost:5000/admin/reports/reader-activity?limit=10
+
+
+# IOT
+
+### Отримання одноразового OTP для активного бронювання
+GET http://localhost:5000/iot/reservations/15/otp
+
+### Валідація OTP та отримання номера комірки
+POST http://localhost:5000/iot/lockers/unlock
+Content-Type: application/json
+
+{
+  "otp": "123456"
+}
+
+### Підтвердження отримання книги через IoT-поштомат
+POST http://localhost:5000/iot/lockers/confirm_pickup
+Content-Type: application/json
+
+{
+  "user_id": 1,
+  "book_id": 2
+}
+
+### Повернення книги через IoT-поштомат
+POST http://localhost:5000/iot/loans/return_by_book
+Content-Type: application/json
+
+{
+  "book_id": 2
+}
