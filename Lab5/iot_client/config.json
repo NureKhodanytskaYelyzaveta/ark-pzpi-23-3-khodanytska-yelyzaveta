@@ -1,0 +1,8 @@
+{
+  "server_url": "http://localhost:5000",
+  "locker_id_prefix": "A",
+  "max_locker_cells": 5,
+  "network_timeout_sec": 5,
+  "retry_interval_sec": 30,
+  "pickup_timeout_sec": 30
+}
